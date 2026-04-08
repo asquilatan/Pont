@@ -10,6 +10,7 @@ mkphase2.js
 *-EXECUTION-REPORT.md
 IMPLEMENTATION-STATUS.md
 commit-*.js
+commit-*.bat
 check-*.js
 verify-*.js
 create-*.js

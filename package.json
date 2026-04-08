@@ -128,6 +128,7 @@
     "compile": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "package": "npm run check-types && node esbuild.js --production",
+    "vsix": "npm run package && npx @vscode/vsce package --allow-missing-repository --out binary/pont-0.0.1.vsix",
     "vscode:prepublish": "npm run package"
   },
   "dependencies": {

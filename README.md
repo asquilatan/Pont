@@ -24,14 +24,14 @@ I built this specifically for Android development workflows, so you can pair, mi
 
 ## Installation (for users)
 
-Install from VSIX only:
+You can install Pont in two ways:
 
-1. Build/package the extension:
+1. Use the prebuilt VSIX from this repo:
+   - `binary/pont-0.0.1.vsix`
+2. Or build the VSIX yourself:
    - `npm install`
-   - `npm run package`
-2. Create a `.vsix`:
-   - `npx @vscode/vsce package`
-3. Install in VS Code:
+   - `npm run vsix`
+3. Install in VS Code (either VSIX):
    - Command Palette -> `Extensions: Install from VSIX...`
    - Pick the generated `.vsix` file
 
@@ -77,4 +77,5 @@ Use VS Code settings under `androidWirelessDebugging.*`:
 - `npm run compile` - Type check + build
 - `npm run watch` - watch build
 - `npm run package` - production build
+- `npm run vsix` - production build + VSIX at `binary/pont-0.0.1.vsix`
 

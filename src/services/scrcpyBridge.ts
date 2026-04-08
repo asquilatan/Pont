@@ -11,6 +11,23 @@ export interface BridgeFrameData {
   dataUrl: string;
 }
 
+export type ScrcpyLaunchErrorCode =
+  | 'missing_dependency'
+  | 'device_unavailable'
+  | 'startup_exit'
+  | 'unknown';
+
+export class ScrcpyLaunchError extends Error {
+  constructor(
+    message: string,
+    public readonly code: ScrcpyLaunchErrorCode,
+    public readonly retryable: boolean
+  ) {
+    super(message);
+    this.name = 'ScrcpyLaunchError';
+  }
+}
+
 export class ScrcpyBridge implements vscode.Disposable {
   private readonly stateEmitter = new vscode.EventEmitter<BridgeStateChange>();
   private readonly frameEmitter = new vscode.EventEmitter<BridgeFrameData>();
@@ -18,6 +35,7 @@ export class ScrcpyBridge implements vscode.Disposable {
   private serial: string | undefined;
   private adb: AdbBridge | undefined;
   private process: any;
+  private readonly startupHealthCheckMs = 1200;
 
   public readonly onDidChangeState = this.stateEmitter.event;
   public readonly onDidFrameData = this.frameEmitter.event;
@@ -30,9 +48,6 @@ export class ScrcpyBridge implements vscode.Disposable {
     this.emitState({ status: 'starting' });
     this.serial = serial;
     this.disposed = false;
-
-    // Validate scrcpy availability so the user gets a clear setup error.
-    await resolveScrcpyPath();
 
     const adbPath = vscode.workspace.getConfiguration('androidWirelessDebugging').get<string>('adbPath') ?? 'adb';
     this.adb = new AdbBridge(adbPath);
@@ -72,27 +87,50 @@ export class ScrcpyBridge implements vscode.Disposable {
       { all: true, reject: false, windowsHide: false }
     );
     this.process = process;
+    let startupSettled = false;
 
-    this.emitState({ status: 'running' });
     process.then((result) => {
       if (this.disposed) {
         return;
       }
       this.process = undefined;
       if (result.exitCode === 0) {
+        if (!startupSettled) {
+          return;
+        }
         this.emitState({ status: 'stopped' });
         return;
       }
       const output = (result.all ?? result.stdout ?? result.stderr ?? '').toString();
-      this.emitState({ status: 'error', error: this.formatError(output) });
+      const launchError = this.mapLaunchError(output);
+      if (!startupSettled) {
+        return;
+      }
+      this.emitState({ status: 'error', error: launchError.message });
     }).catch((error: unknown) => {
       if (this.disposed) {
         return;
       }
       this.process = undefined;
       const message = error instanceof Error ? error.message : String(error);
-      this.emitState({ status: 'error', error: this.formatError(message) });
+      const launchError = this.mapLaunchError(message);
+      if (!startupSettled) {
+        return;
+      }
+      this.emitState({ status: 'error', error: launchError.message });
     });
+
+    try {
+      await this.awaitStartupHealth(process);
+      startupSettled = true;
+      this.emitState({ status: 'running' });
+    } catch (error) {
+      startupSettled = true;
+      this.process = undefined;
+      const launchError = this.toLaunchError(error);
+      this.emitState({ status: 'error', error: launchError.message });
+      throw launchError;
+    }
   }
 
   public stop(emitStopped = true): void {
@@ -109,20 +147,76 @@ export class ScrcpyBridge implements vscode.Disposable {
     }
   }
 
-  private formatError(message: string): string {
-    if (message.includes('scrcpy')) {
-      return message;
+  private async awaitStartupHealth(process: any): Promise<void> {
+    const startupTimer = new Promise<'running'>((resolve) => {
+      setTimeout(() => resolve('running'), this.startupHealthCheckMs);
+    });
+    const earlyExit = process.then((result: any) => {
+      if (this.disposed) {
+        return 'disposed';
+      }
+      const output = (result.all ?? result.stdout ?? result.stderr ?? '').toString();
+      throw this.mapLaunchError(output || 'scrcpy exited before becoming interactive');
+    }).catch((error: unknown) => {
+      if (this.disposed) {
+        return 'disposed';
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw this.mapLaunchError(message);
+    });
+
+    await Promise.race([startupTimer, earlyExit]);
+  }
+
+  private toLaunchError(error: unknown): ScrcpyLaunchError {
+    if (error instanceof ScrcpyLaunchError) {
+      return error;
     }
 
-    if (message.includes('ENOENT') || message.includes('not found')) {
-      return 'adb or scrcpy executable not found. Check androidWirelessDebugging.adbPath and androidWirelessDebugging.scrcpyPath.';
+    const message = error instanceof Error ? error.message : String(error);
+    return this.mapLaunchError(message);
+  }
+
+  private mapLaunchError(message: string): ScrcpyLaunchError {
+    const lower = message.toLowerCase();
+
+    if (
+      lower.includes('enoent')
+      || lower.includes('not found')
+      || lower.includes('cannot find')
+      || lower.includes('is not recognized')
+    ) {
+      return new ScrcpyLaunchError(
+        'adb or scrcpy executable not found. Check androidWirelessDebugging.adbPath and androidWirelessDebugging.scrcpyPath.',
+        'missing_dependency',
+        false
+      );
     }
 
-    if (message.includes('device') || message.includes('offline')) {
-      return 'Device not available. Check wireless debugging and try again.';
+    if (
+      lower.includes('offline')
+      || lower.includes('device not found')
+      || lower.includes('no devices/emulators found')
+      || lower.includes('device') && lower.includes('unavailable')
+      || lower.includes('connection reset')
+      || lower.includes('closed')
+    ) {
+      return new ScrcpyLaunchError(
+        'Device is temporarily unavailable. Ensure wireless debugging is on and run Open Viewer again.',
+        'device_unavailable',
+        true
+      );
     }
 
-    return message;
+    if (lower.includes('exited') || lower.includes('terminated')) {
+      return new ScrcpyLaunchError(
+        'scrcpy exited during startup. Verify the device connection, then relaunch Open Viewer.',
+        'startup_exit',
+        true
+      );
+    }
+
+    return new ScrcpyLaunchError(message, 'unknown', false);
   }
 
   private async resolveUsableSerial(serial: string | undefined): Promise<string | undefined> {

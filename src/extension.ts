@@ -15,13 +15,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let adb: AdbBridge | undefined;
   const lastHostKey = 'androidWirelessDebugging.lastHost';
 
-  const pairDevice = async (): Promise<void> => {
+  const pairDevice = async (showPanel = true): Promise<void> => {
     await runPairDeviceFlow({
       adb: await getAdb(),
       session,
       panel,
       getLastHost: () => context.globalState.get<string>(lastHostKey),
       setLastHost: (host: string) => context.globalState.update(lastHostKey, host),
+      showPanel,
+      onPaired: async () => {
+        await openViewerCommand({ context, session, mirrorSession });
+      },
     });
   };
 
@@ -59,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const sidebar = new StatusSidebarProvider(context, () => session.current, {
     onPairRequested: async () => {
-      await pairDevice();
+      await pairDevice(false);
       sidebar.update();
     },
     onOpenViewerRequested: async () => {

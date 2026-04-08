@@ -11,10 +11,14 @@ interface PairDeviceDependencies {
   panel: StatusPanelController;
   getLastHost: () => string | undefined;
   setLastHost: (host: string) => Thenable<void>;
+  showPanel?: boolean;
+  onPaired?: () => Promise<void>;
 }
 
 export async function runPairDeviceFlow(deps: PairDeviceDependencies): Promise<void> {
-  deps.panel.show();
+  if (deps.showPanel !== false) {
+    deps.panel.show();
+  }
 
   const selection = await pickPairingSelection(deps.adb, deps.getLastHost);
   if (!selection) {
@@ -33,8 +37,15 @@ export async function runPairDeviceFlow(deps: PairDeviceDependencies): Promise<v
     code,
   };
 
-  await executePairing(deps, target, selection.connectHost, selection.connectPort);
+  const paired = await executePairing(deps, target, selection.connectHost, selection.connectPort);
+  if (!paired) {
+    return;
+  }
+
   await deps.setLastHost(selection.pairHost);
+  if (deps.onPaired) {
+    await deps.onPaired();
+  }
 }
 
 async function promptForPairingCode(): Promise<string | undefined> {
@@ -72,7 +83,7 @@ async function pickPairingSelection(
 
 async function discoverEndpointsWithRetry(adb: AdbBridge): Promise<WirelessServiceEndpoint[]> {
   const attempts = 6;
-  const delayMs = 700;
+  const delayMs = 3000;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const endpoints = await adb.discoverWirelessEndpoints();
@@ -231,7 +242,7 @@ async function executePairing(
   target: PairingTarget,
   connectHost: string,
   connectPort: number
-): Promise<void> {
+): Promise<boolean> {
   deps.session.beginPairing(target);
   deps.panel.update();
 
@@ -244,11 +255,13 @@ async function executePairing(
     const serial = resolveConnectedSerial(connectHost, connectPort, connectOutput, beforeDevices, afterDevices);
     deps.session.setConnected(serial, connectOutput.trim() || 'Android device connected.');
     deps.panel.update();
+    return true;
   } catch (error) {
     const message = toErrorMessage(error);
     deps.session.setFailed(message);
     deps.panel.update();
     await vscode.window.showErrorMessage(message);
+    return false;
   }
 }
 

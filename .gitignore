@@ -1,2 +1,16 @@
 .gemini/
 .github/
+.planning/
+node_modules/
+dist/
+*.bat
+webview-template.html
+mkphase2.js
+*-EXECUTION-REPORT.md
+IMPLEMENTATION-STATUS.md
+commit-*.js
+check-*.js
+verify-*.js
+create-*.js
+manual-*.js
+__*.js

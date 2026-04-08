@@ -10,8 +10,15 @@ import { openViewerCommand } from './commands/openViewer';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new PairingSession();
-  const adbPath = await resolveAdbPath();
-  const adb = new AdbBridge(adbPath);
+  let adb: AdbBridge | undefined;
+
+  const getAdb = async (): Promise<AdbBridge> => {
+    if (!adb) {
+      adb = new AdbBridge(await resolveAdbPath());
+    }
+
+    return adb;
+  };
 
   // Create mirror session that manages the scrcpy lifecycle
   const mirrorSession = new MirrorSession(
@@ -21,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const panel = new StatusPanelController(context, () => session.current, {
     onPairRequested: async () => {
-      await runPairDeviceFlow({ adb, session, panel });
+      await runPairDeviceFlow({ adb: await getAdb(), session, panel });
     },
     onOpenViewerRequested: async () => {
       await openViewerCommand({ context, session, mirrorSession });
@@ -40,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     session,
     mirrorSession,
     vscode.commands.registerCommand('androidWirelessDebugging.pairDevice', async () => {
-      await runPairDeviceFlow({ adb, session, panel });
+      await runPairDeviceFlow({ adb: await getAdb(), session, panel });
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.openStatusPanel', () => {
       panel.show();

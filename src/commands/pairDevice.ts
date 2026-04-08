@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { AdbBridge } from '../services/adbBridge';
 import { PairingSession } from '../services/pairingSession';
 import { StatusPanelController } from '../ui/statusPanel';
+import { showPairingQrPanel } from '../ui/pairingQrPanel';
 import type { PairingMethod, PairingTarget } from '../types';
+import type { WirelessServiceEndpoint } from '../services/adbBridge';
 
 interface PairDeviceDependencies {
   adb: AdbBridge;
@@ -36,45 +38,24 @@ export async function runPairDeviceFlow(deps: PairDeviceDependencies): Promise<v
     return;
   }
 
-  if (method.method === 'pairing-code') {
-    const target = await promptForPairingTarget('pairing-code');
-    if (!target) {
-      return;
-    }
-    await executePairing(deps, target);
+  const code = await promptForPairingCode(method.method);
+  if (!code) {
     return;
   }
 
-  const target = await promptForPairingTarget('qr-code');
+  const target = await resolvePairingTarget(deps.adb, method.method, code);
   if (!target) {
     return;
   }
+
+  if (method.method === 'qr-code') {
+    await showPairingQrPanel(target);
+  }
+
   await executePairing(deps, target);
 }
 
-async function promptForPairingTarget(method: PairingMethod): Promise<PairingTarget | undefined> {
-  const payload = await vscode.window.showInputBox({
-    title: method === 'qr-code' ? 'QR code payload' : 'Pairing host and port',
-    prompt:
-      method === 'qr-code'
-        ? 'Paste the pairing payload encoded in the QR code, or enter host:port|code.'
-        : 'Enter the pairing endpoint as host:port.',
-    placeHolder:
-      method === 'qr-code'
-        ? 'android-wireless-debugging://pair?host=192.168.0.17&port=37099&code=123456'
-        : '192.168.0.17:37099',
-    ignoreFocusOut: true,
-  });
-
-  if (!payload) {
-    return undefined;
-  }
-
-  const parsed = parseEndpoint(payload.trim());
-  if (method === 'qr-code' && parsed?.code) {
-    return normalizePairingTarget(method, payload, parsed.code);
-  }
-
+async function promptForPairingCode(method: PairingMethod): Promise<string | undefined> {
   const code = await vscode.window.showInputBox({
     title: method === 'qr-code' ? 'QR pairing code' : 'Pairing code',
     prompt: 'Enter the 6-digit wireless debugging code shown on the device.',
@@ -86,7 +67,49 @@ async function promptForPairingTarget(method: PairingMethod): Promise<PairingTar
     return undefined;
   }
 
-  return normalizePairingTarget(method, payload, code);
+  return code.trim();
+}
+
+async function resolvePairingTarget(
+  adb: AdbBridge,
+  method: PairingMethod,
+  code: string
+): Promise<PairingTarget | undefined> {
+  const endpoints = await adb.discoverWirelessEndpoints();
+  if (endpoints.length === 0) {
+    void vscode.window.showErrorMessage(
+      'No wireless debugging endpoint found. Open Wireless debugging on the phone and retry.'
+    );
+    return undefined;
+  }
+
+  const endpoint = endpoints.length === 1 ? endpoints[0] : await pickEndpoint(endpoints);
+  if (!endpoint) {
+    return undefined;
+  }
+
+  return {
+    method,
+    host: endpoint.host,
+    port: endpoint.port,
+    code,
+  };
+}
+
+async function pickEndpoint(endpoints: WirelessServiceEndpoint[]): Promise<WirelessServiceEndpoint | undefined> {
+  const pick = await vscode.window.showQuickPick(
+    endpoints.map((endpoint) => ({
+      label: endpoint.label,
+      description: `${endpoint.host}:${endpoint.port}`,
+      endpoint,
+    })),
+    {
+      title: 'Select wireless debugging endpoint',
+      placeHolder: 'Choose the Android wireless debugging service to pair with',
+    }
+  );
+
+  return pick?.endpoint;
 }
 
 async function executePairing(deps: PairDeviceDependencies, target: PairingTarget): Promise<void> {
@@ -106,59 +129,6 @@ async function executePairing(deps: PairDeviceDependencies, target: PairingTarge
     deps.panel.update();
     await vscode.window.showErrorMessage(message);
   }
-}
-
-function normalizePairingTarget(method: PairingMethod, payload: string, code: string): PairingTarget {
-  const trimmed = payload.trim();
-  const parsed = parseEndpoint(trimmed);
-
-  if (parsed) {
-    return {
-      method,
-      host: parsed.host,
-      port: parsed.port,
-      code: parsed.code?.trim() || code.trim(),
-    };
-  }
-
-  const [hostPart, portPart] = trimmed.split(':');
-  const port = Number.parseInt(portPart ?? '', 10);
-  if (!hostPart || Number.isNaN(port)) {
-    throw new Error('Enter pairing target as host:port or a QR payload with host and port.');
-  }
-
-  return {
-    method,
-    host: hostPart,
-    port,
-    code: code.trim(),
-  };
-}
-
-function parseEndpoint(value: string): { host: string; port: number; code?: string } | undefined {
-  try {
-    const url = new URL(value);
-    const host = url.searchParams.get('host') ?? url.hostname;
-    const port = Number.parseInt(url.searchParams.get('port') ?? '', 10);
-    const code = url.searchParams.get('code') ?? undefined;
-
-    if (host && !Number.isNaN(port)) {
-      return { host, port, code: code ?? undefined };
-    }
-  } catch {
-    // fall through to raw endpoint parsing
-  }
-
-  const raw = value.match(/(?<host>[^:]+):(?<port>\d{2,5})(?:\|(?<code>\d{4,8}))?/);
-  if (raw?.groups?.host && raw.groups.port) {
-    return {
-      host: raw.groups.host,
-      port: Number.parseInt(raw.groups.port, 10),
-      code: raw.groups.code,
-    };
-  }
-
-  return undefined;
 }
 
 function toErrorMessage(error: unknown): string {

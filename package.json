@@ -39,8 +39,8 @@
       "properties": {
         "androidWirelessDebugging.adbPath": {
           "type": "string",
-          "default": "adb",
-          "description": "Path to the adb executable."
+          "default": "",
+          "description": "Path to the adb executable. Leave empty to auto-detect from PATH or Android SDK locations."
         },
         "androidWirelessDebugging.scrcpyPath": {
           "type": "string",
@@ -58,10 +58,12 @@
     "vscode:prepublish": "npm run package"
   },
   "dependencies": {
-    "execa": "^9.5.2"
+    "execa": "^9.5.2",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "@types/qrcode": "^1.5.6",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.1",
     "typescript": "^5.8.3"

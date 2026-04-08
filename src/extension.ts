@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { resolveAdbPath } from './services/adbLocator';
 import { AdbBridge } from './services/adbBridge';
 import { PairingSession } from './services/pairingSession';
 import { MirrorSession } from './services/mirrorSession';
@@ -7,9 +8,9 @@ import { StatusPanelController } from './ui/statusPanel';
 import { runPairDeviceFlow } from './commands/pairDevice';
 import { openViewerCommand } from './commands/openViewer';
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new PairingSession();
-  const adbPath = vscode.workspace.getConfiguration('androidWirelessDebugging').get<string>('adbPath') ?? 'adb';
+  const adbPath = await resolveAdbPath();
   const adb = new AdbBridge(adbPath);
 
   // Create mirror session that manages the scrcpy lifecycle

@@ -52,7 +52,7 @@ export class ScrcpyLocator {
     // Not found - provide clear setup guidance
     throw new Error(
       'scrcpy is not installed or not in your PATH.\n\n' +
-      'To use the Android Device Viewer, install scrcpy:\n' +
+      'To use the Pont Viewer, install scrcpy:\n' +
       '• Windows: scoop install scrcpy OR choco install scrcpy\n' +
       '• macOS: brew install scrcpy\n' +
       '• Linux: apt install scrcpy OR snap install scrcpy\n\n' +

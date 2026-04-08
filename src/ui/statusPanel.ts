@@ -36,7 +36,7 @@ export class StatusPanelController implements vscode.Disposable {
 
     this.panel = vscode.window.createWebviewPanel(
       'androidWirelessDebugging.status',
-      'Android Device',
+      'Pont',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -109,7 +109,7 @@ export class StatusPanelController implements vscode.Disposable {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Android Device</title>
+  <title>Pont</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -219,13 +219,13 @@ export class StatusPanelController implements vscode.Disposable {
   <main class="shell">
     <section class="status-card" aria-label="Connection status card">
       <div class="status-header">
-        <h1 class="status-title">Android Device</h1>
+        <h1 class="status-title">Pont</h1>
         <span class="status-badge tone-${viewModel.tone}">${title}</span>
       </div>
       <div class="body">${body}</div>
       <div class="actions">
-        <button class="primary" id="pair">Pair Android Device</button>
-        <button id="viewer">Open Device Viewer</button>
+        <button class="primary" id="pair">Pair Device</button>
+        <button id="viewer">Open Pont Viewer</button>
         <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
         <button id="reset">Reset Extension</button>
       </div>

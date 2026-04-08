@@ -37,12 +37,12 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<O
   });
 
   // If no device is connected, show informational message
-  if (snapshot.state !== 'connected') {
-    void vscode.window.showInformationMessage(
-      'No device connected. Pair a device first using "Android: Pair Device".'
-    );
-    return { status: 'no-device' };
-  }
+    if (snapshot.state !== 'connected') {
+      void vscode.window.showInformationMessage(
+        'No device connected. Pair a device first using "Pont: Pair Device".'
+      );
+      return { status: 'no-device' };
+    }
 
   // Start the mirror session for the connected device
   try {

@@ -25,8 +25,8 @@
       "activitybar": [
         {
           "id": "androidWirelessDebugging",
-          "title": "Android",
-          "icon": "media\\android.svg"
+            "title": "Pont",
+          "icon": "media\\pont.svg"
         }
       ]
     },
@@ -42,37 +42,37 @@
     "commands": [
       {
         "command": "androidWirelessDebugging.pairDevice",
-        "title": "Android: Pair Device",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Pair Device",
+        "category": "Pont"
       },
       {
         "command": "androidWirelessDebugging.openStatusPanel",
-        "title": "Android: Open Device Status",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Open Device Status",
+        "category": "Pont"
       },
       {
         "command": "androidWirelessDebugging.openDeviceViewer",
-        "title": "Android: Open Device Viewer",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Open Device Viewer",
+        "category": "Pont"
       },
       {
         "command": "androidWirelessDebugging.disconnectDevice",
-        "title": "Android: Disconnect Device",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Disconnect Device",
+        "category": "Pont"
       },
       {
         "command": "androidWirelessDebugging.runConnectedApp",
-        "title": "Android: Run Connected App",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Run Connected App",
+        "category": "Pont"
       },
       {
         "command": "androidWirelessDebugging.resetExtension",
-        "title": "Android: Reset Extension",
-        "category": "Android Wireless Debugging"
+        "title": "Pont: Reset Extension",
+        "category": "Pont"
       }
     ],
     "configuration": {
-      "title": "Android Wireless Debugging",
+      "title": "Pont",
       "properties": {
         "androidWirelessDebugging.adbPath": {
           "type": "string",
@@ -93,7 +93,7 @@
         "androidWirelessDebugging.gradleInstallTask": {
           "type": "string",
           "default": "installDebug",
-          "description": "Gradle task used by Android: Run Connected App."
+          "description": "Gradle task used by Pont: Run Connected App."
         },
         "androidWirelessDebugging.scrcpyAlwaysOnTop": {
           "type": "boolean",

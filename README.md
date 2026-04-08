@@ -43,19 +43,19 @@ You can install Pont in two ways:
 3. Build:
    - `npm run compile`
 4. Launch extension dev host:
-   - Press `F5` in VS Code
+    - Press `F5` in VS Code
 5. In the Extension Development Host window:
-   - Run `Android: Pair Device`
-   - Then `Android: Open Device Viewer`
+    - Run `Pont: Pair Device`
+    - Then `Pont: Open Device Viewer`
 
 ## How to use
 
 1. On phone: open **Wireless debugging** and choose **Pair device with pairing code**
-2. In VS Code: run `Android: Pair Device`
+2. In VS Code: run `Pont: Pair Device`
 3. Pick discovered device IP (or enter manually), then enter the 6-digit code
-4. Run `Android: Open Device Viewer` to launch native `scrcpy`
-5. Use `Android: Run Connected App` to run your Gradle install task
-6. If state gets inconsistent, run `Android: Reset Extension`
+4. Run `Pont: Open Device Viewer` to launch native `scrcpy`
+5. Use `Pont: Run Connected App` to run your Gradle install task
+6. If state gets inconsistent, run `Pont: Reset Extension`
 
 ## Configuration
 

@@ -16,8 +16,8 @@ export function getStatusViewModel(snapshot: DeviceSessionSnapshot): StatusViewM
         title: 'Pairing',
         body: snapshot.message || 'Pairing Android device...',
         tone: 'warning',
-        primaryActionLabel: 'Pair Android Device',
-        secondaryActionLabel: 'Open Device Viewer',
+        primaryActionLabel: 'Pair Device',
+        secondaryActionLabel: 'Open Pont Viewer',
         showSecondaryAction: true,
       };
     case 'connected':
@@ -25,8 +25,8 @@ export function getStatusViewModel(snapshot: DeviceSessionSnapshot): StatusViewM
         title: 'Connected',
         body: snapshot.message || 'Android device connected.',
         tone: 'success',
-        primaryActionLabel: 'Pair Android Device',
-        secondaryActionLabel: 'Open Device Viewer',
+        primaryActionLabel: 'Pair Device',
+        secondaryActionLabel: 'Open Pont Viewer',
         showSecondaryAction: true,
       };
     case 'failed':
@@ -34,8 +34,8 @@ export function getStatusViewModel(snapshot: DeviceSessionSnapshot): StatusViewM
         title: 'Failed',
         body: snapshot.message || 'Pairing failed. Check the device and try again.',
         tone: 'error',
-        primaryActionLabel: 'Pair Android Device',
-        secondaryActionLabel: 'Open Device Viewer',
+        primaryActionLabel: 'Pair Device',
+        secondaryActionLabel: 'Open Pont Viewer',
         showSecondaryAction: true,
       };
     case 'disconnected':
@@ -44,8 +44,8 @@ export function getStatusViewModel(snapshot: DeviceSessionSnapshot): StatusViewM
         title: 'Disconnected',
         body: snapshot.message || 'No Android device connected.',
         tone: 'neutral',
-        primaryActionLabel: 'Pair Android Device',
-        secondaryActionLabel: 'Open Device Viewer',
+        primaryActionLabel: 'Pair Device',
+        secondaryActionLabel: 'Open Pont Viewer',
         showSecondaryAction: true,
       };
   }

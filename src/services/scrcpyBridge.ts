@@ -65,7 +65,7 @@ export class ScrcpyBridge implements vscode.Disposable {
     const windowWidth = config.get<number>('scrcpyWindowWidth');
     const windowHeight = config.get<number>('scrcpyWindowHeight');
     const alwaysOnTop = config.get<boolean>('scrcpyAlwaysOnTop') ?? true;
-    const args = ['-s', activeSerial, '--no-audio', '--window-title', `Android Device Viewer (${activeSerial})`];
+    const args = ['-s', activeSerial, '--no-audio', '--window-title', `Pont Viewer (${activeSerial})`];
     if (alwaysOnTop) {
       args.push('--always-on-top');
     }

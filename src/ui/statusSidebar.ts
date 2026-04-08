@@ -133,7 +133,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     <div class="meta">${escapeHtml(controlGuidance)}</div>
     <div class="actions">
       <button class="primary" id="pair">Pair Device</button>
-      <button id="viewer">Open Viewer (Relaunch scrcpy)</button>
+      <button id="viewer">Open Pont Viewer (Relaunch scrcpy)</button>
       <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
       <button id="run-app" ${disconnectDisabled}>Run App</button>
       <button id="reset">Reset Extension</button>
@@ -153,7 +153,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
 
   private getControlGuidance(snapshotState: DeviceSessionSnapshot['state']): string {
     if (snapshotState !== 'connected') {
-      return 'Pair a device, then use Open Viewer to launch the native scrcpy control window.';
+        return 'Pair a device, then use Pont Viewer to launch the native scrcpy control window.';
     }
 
     switch (this.interactionHealth.state) {
@@ -162,12 +162,12 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
       case 'failed':
         return this.interactionHealth.message
           ? `Control startup failed: ${this.interactionHealth.message}`
-          : 'Control startup failed. Use Open Viewer to retry, or Reset Extension to clear state.';
+          : 'Control startup failed. Use Pont Viewer to retry, or Reset Extension to clear state.';
       case 'ready':
         return 'Interactive control is ready in native scrcpy (keyboard + mouse/touch).';
       case 'idle':
       default:
-        return 'Interaction runs in the native scrcpy window. Open Viewer relaunches and repositions it using your configured placement.';
+        return 'Interaction runs in the native scrcpy window. Pont Viewer relaunches and repositions it using your configured placement.';
     }
   }
 }

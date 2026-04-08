@@ -24,7 +24,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       setLastHost: (host: string) => context.globalState.update(lastHostKey, host),
       showPanel,
       onPaired: async () => {
-        await openViewerCommand({ context, session, mirrorSession });
+        await openViewer();
       },
     });
   };
@@ -43,12 +43,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context
   );
 
+  const openViewer = async (): Promise<void> => {
+    await openViewerCommand({ context, session, mirrorSession });
+  };
+
   const panel = new StatusPanelController(context, () => session.current, {
     onPairRequested: async () => {
       await pairDevice();
     },
     onOpenViewerRequested: async () => {
-      await openViewerCommand({ context, session, mirrorSession });
+      await openViewer();
     },
     onDisconnectRequested: async () => {
       const snapshot = session.current;
@@ -67,7 +71,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       sidebar.update();
     },
     onOpenViewerRequested: async () => {
-      await openViewerCommand({ context, session, mirrorSession });
+      await openViewer();
       sidebar.update();
     },
     onDisconnectRequested: async () => {
@@ -107,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel.show();
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.openDeviceViewer', async () => {
-      await openViewerCommand({ context, session, mirrorSession });
+      await openViewer();
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.disconnectDevice', async () => {
       const snapshot = session.current;

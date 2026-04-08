@@ -39,12 +39,10 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<v
     return;
   }
 
-  if (deps.mirrorSession.isActive) {
-    await deps.mirrorSession.stop(false);
-  }
-
   // Start the mirror session for the connected device
   try {
+    // Force deterministic relaunch/reposition each time Open Viewer is invoked.
+    await deps.mirrorSession.stop(false);
     await deps.mirrorSession.start(snapshot, panel);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

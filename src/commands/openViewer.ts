@@ -42,8 +42,7 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<v
   // Start the mirror session for the connected device
   try {
     // Force deterministic relaunch/reposition each time Open Viewer is invoked.
-    await deps.mirrorSession.stop(false);
-    await deps.mirrorSession.start(snapshot, panel);
+    await deps.mirrorSession.relaunch(snapshot, panel);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     void vscode.window.showErrorMessage(

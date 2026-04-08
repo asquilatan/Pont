@@ -19,6 +19,7 @@ export class MirrorSession implements vscode.Disposable {
   private panel: ViewerPanel | undefined;
   private currentSerial: string | undefined;
   private disposables: vscode.Disposable[] = [];
+  private operationQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly bridgeFactory: () => ScrcpyBridge,
@@ -42,13 +43,33 @@ export class MirrorSession implements vscode.Disposable {
    * @param panel - The viewer panel to update
    */
   public async start(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
+    await this.runExclusive(async () => {
+      await this.startInternal(snapshot, panel);
+    });
+  }
+
+  /**
+   * Relaunches the active mirror session deterministically.
+   *
+   * This path is used by Open Viewer to guarantee stop -> start behavior
+   * with current scrcpy placement settings while preserving single-session
+   * semantics.
+   */
+  public async relaunch(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
+    await this.runExclusive(async () => {
+      await this.stopInternal(false);
+      await this.startInternal(snapshot, panel);
+    });
+  }
+
+  private async startInternal(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
     // Validate device is connected
     if (snapshot.state !== 'connected' || !snapshot.serial) {
       throw new Error('Cannot start mirror: no device connected');
     }
 
     // Stop any existing session first
-    await this.stop(false);
+    await this.stopInternal(false);
 
     this.panel = panel;
     this.currentSerial = snapshot.serial;
@@ -100,6 +121,12 @@ export class MirrorSession implements vscode.Disposable {
    * @param detachViewer - When true, clears the attached viewer panel reference.
    */
   public async stop(detachViewer = true): Promise<void> {
+    await this.runExclusive(async () => {
+      await this.stopInternal(detachViewer);
+    });
+  }
+
+  private async stopInternal(detachViewer = true): Promise<void> {
     if (this.bridge) {
       this.bridge.dispose();
       this.bridge = undefined;
@@ -129,22 +156,24 @@ export class MirrorSession implements vscode.Disposable {
    * @param snapshot - Updated device session snapshot
    */
   public async handleDeviceStateChange(snapshot: DeviceSessionSnapshot): Promise<void> {
-    // If device disconnected and we have an active session, stop it
-    if (snapshot.state !== 'connected' && this.bridge) {
-      await this.stop(false);
-    }
-
-    if (snapshot.state === 'connected' && snapshot.serial && this.panel) {
-      if (!this.bridge) {
-        await this.start(snapshot, this.panel);
-        return;
+    await this.runExclusive(async () => {
+      // If device disconnected and we have an active session, stop it
+      if (snapshot.state !== 'connected' && this.bridge) {
+        await this.stopInternal(false);
       }
 
-      if (this.currentSerial && snapshot.serial !== this.currentSerial) {
-        await this.stop(false);
-        await this.start(snapshot, this.panel);
+      if (snapshot.state === 'connected' && snapshot.serial && this.panel) {
+        if (!this.bridge) {
+          await this.startInternal(snapshot, this.panel);
+          return;
+        }
+
+        if (this.currentSerial && snapshot.serial !== this.currentSerial) {
+          await this.stopInternal(false);
+          await this.startInternal(snapshot, this.panel);
+        }
       }
-    }
+    });
   }
 
   /**
@@ -247,5 +276,14 @@ export class MirrorSession implements vscode.Disposable {
 
   public dispose(): void {
     void this.stop();
+  }
+
+  private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const operationResult = this.operationQueue.then(operation, operation);
+    this.operationQueue = operationResult.then(
+      () => undefined,
+      () => undefined
+    );
+    return operationResult;
   }
 }

@@ -18,6 +18,7 @@ function candidatePaths(): string[] {
     androidHome ? path.join(androidHome, 'platform-tools', executable) : undefined,
     androidSdkRoot ? path.join(androidSdkRoot, 'platform-tools', executable) : undefined,
     localAppData ? path.join(localAppData, 'Android', 'Sdk', 'platform-tools', executable) : undefined,
+    path.join(home, 'AppData', 'Local', 'Android Studio', 'platform-tools', executable),
     path.join(home, 'Android', 'Sdk', 'platform-tools', executable),
     path.join(home, 'AppData', 'Local', 'Android', 'Sdk', 'platform-tools', executable),
     process.platform === 'darwin' ? '/Applications/Android Studio.app/Contents/sdk/platform-tools/adb' : undefined,
@@ -79,11 +80,8 @@ export async function resolveAdbPath(): Promise<string> {
     );
   }
 
-  await vscode.workspace.getConfiguration('androidWirelessDebugging').update(
-    'adbPath',
-    adbPath,
-    vscode.ConfigurationTarget.Workspace
-  );
+  const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+  await vscode.workspace.getConfiguration('androidWirelessDebugging').update('adbPath', adbPath, target);
 
   return adbPath;
 }

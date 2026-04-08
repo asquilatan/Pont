@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { ViewerPanel } from '../ui/viewerPanel';
 import type { DeviceSessionSnapshot } from '../types';
 import type { ScrcpyBridge } from './scrcpyBridge';
+import { ScrcpyLaunchError } from './scrcpyBridge';
 
 /**
  * Manages the lifecycle of a single active mirror session.
@@ -20,6 +21,8 @@ export class MirrorSession implements vscode.Disposable {
   private currentSerial: string | undefined;
   private disposables: vscode.Disposable[] = [];
   private operationQueue: Promise<void> = Promise.resolve();
+  private readonly maxStartAttempts = 2;
+  private readonly transientRetryDelayMs = 600;
 
   constructor(
     private readonly bridgeFactory: () => ScrcpyBridge,
@@ -44,7 +47,7 @@ export class MirrorSession implements vscode.Disposable {
    */
   public async start(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
     await this.runExclusive(async () => {
-      await this.startInternal(snapshot, panel);
+      await this.startInternal(snapshot, panel, { reason: 'start' });
     });
   }
 
@@ -58,11 +61,15 @@ export class MirrorSession implements vscode.Disposable {
   public async relaunch(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
     await this.runExclusive(async () => {
       await this.stopInternal(false);
-      await this.startInternal(snapshot, panel);
+      await this.startInternal(snapshot, panel, { reason: 'relaunch' });
     });
   }
 
-  private async startInternal(snapshot: DeviceSessionSnapshot, panel: ViewerPanel): Promise<void> {
+  private async startInternal(
+    snapshot: DeviceSessionSnapshot,
+    panel: ViewerPanel,
+    options: { reason: 'start' | 'relaunch' | 'device-change' }
+  ): Promise<void> {
     // Validate device is connected
     if (snapshot.state !== 'connected' || !snapshot.serial) {
       throw new Error('Cannot start mirror: no device connected');
@@ -75,43 +82,13 @@ export class MirrorSession implements vscode.Disposable {
     this.currentSerial = snapshot.serial;
 
     try {
-      // Update panel to loading state
-      this.updatePanelState('loading', undefined);
-
-      // Create and start the bridge
-      this.bridge = this.bridgeFactory();
-      
-      // Listen for bridge state changes
-      this.disposables.push(
-        this.bridge.onDidChangeState((state) => {
-          this.handleBridgeStateChange(state);
-        })
-      );
-
-      this.disposables.push(
-        this.bridge.onDidFrameData((frame) => {
-          if (this.panel) {
-            this.panel.postFrameData(frame.dataUrl);
-          }
-        })
-      );
-
-      // Start the scrcpy process
-      await this.bridge.start(snapshot.serial);
-
-      // Update panel to connected state
+      await this.startWithRetry(snapshot.serial, options.reason);
       this.updatePanelState('connected', undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.bridge?.stop(false);
-      this.bridge = undefined;
-      this.currentSerial = undefined;
-      while (this.disposables.length > 0) {
-        this.disposables.pop()?.dispose();
-      }
+      const message = this.formatStartErrorMessage(error);
+      this.clearBridgeState();
       this.updatePanelState('error', message);
-      
-      throw error;
+      throw new Error(message);
     }
   }
 
@@ -164,13 +141,13 @@ export class MirrorSession implements vscode.Disposable {
 
       if (snapshot.state === 'connected' && snapshot.serial && this.panel) {
         if (!this.bridge) {
-          await this.startInternal(snapshot, this.panel);
+          await this.startInternal(snapshot, this.panel, { reason: 'device-change' });
           return;
         }
 
         if (this.currentSerial && snapshot.serial !== this.currentSerial) {
           await this.stopInternal(false);
-          await this.startInternal(snapshot, this.panel);
+          await this.startInternal(snapshot, this.panel, { reason: 'device-change' });
         }
       }
     });
@@ -203,7 +180,7 @@ export class MirrorSession implements vscode.Disposable {
         break;
       case 'error':
         this.clearBridgeState();
-        this.updatePanelState('error', state.error);
+        this.updatePanelState('error', state.error ?? 'Screen mirror failed');
         break;
     }
   }
@@ -263,11 +240,11 @@ export class MirrorSession implements vscode.Disposable {
   private getDefaultMessage(viewerState: 'loading' | 'connected' | 'disconnected' | 'error'): string {
     switch (viewerState) {
       case 'loading':
-        return 'Starting screen mirror...';
+        return 'Relaunching native scrcpy window...';
       case 'connected':
-        return 'Screen mirror active';
+        return 'Native scrcpy control ready';
       case 'error':
-        return 'Screen mirror failed';
+        return 'Failed to start native scrcpy control';
       case 'disconnected':
       default:
         return 'Screen mirror disconnected';
@@ -285,5 +262,88 @@ export class MirrorSession implements vscode.Disposable {
       () => undefined
     );
     return operationResult;
+  }
+
+  private async startWithRetry(serial: string, reason: 'start' | 'relaunch' | 'device-change'): Promise<void> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= this.maxStartAttempts; attempt += 1) {
+      this.currentSerial = serial;
+      this.updatePanelState('loading', this.getLoadingMessage(reason, attempt));
+      try {
+        await this.startBridge(serial);
+        return;
+      } catch (error) {
+        lastError = error;
+        this.clearBridgeState();
+        const canRetry = attempt < this.maxStartAttempts && this.shouldRetryStart(error);
+        if (!canRetry) {
+          break;
+        }
+        await this.delay(this.transientRetryDelayMs);
+      }
+    }
+
+    throw lastError ?? new Error('Unknown mirror startup failure');
+  }
+
+  private async startBridge(serial: string): Promise<void> {
+    this.bridge = this.bridgeFactory();
+    this.disposables.push(
+      this.bridge.onDidChangeState((state) => {
+        this.handleBridgeStateChange(state);
+      })
+    );
+    this.disposables.push(
+      this.bridge.onDidFrameData((frame) => {
+        if (this.panel) {
+          this.panel.postFrameData(frame.dataUrl);
+        }
+      })
+    );
+    await this.bridge.start(serial);
+  }
+
+  private shouldRetryStart(error: unknown): boolean {
+    if (error instanceof ScrcpyLaunchError) {
+      return error.retryable;
+    }
+
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    return message.includes('offline')
+      || message.includes('temporarily unavailable')
+      || message.includes('startup');
+  }
+
+  private formatStartErrorMessage(error: unknown): string {
+    if (error instanceof ScrcpyLaunchError) {
+      return error.message;
+    }
+
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private getLoadingMessage(reason: 'start' | 'relaunch' | 'device-change', attempt: number): string {
+    if (reason === 'relaunch') {
+      return attempt === 1
+        ? 'Relaunching native scrcpy window...'
+        : 'Retrying native scrcpy startup...';
+    }
+
+    if (reason === 'device-change') {
+      return attempt === 1
+        ? 'Switching native scrcpy to the active device...'
+        : 'Retrying native scrcpy startup for the active device...';
+    }
+
+    return attempt === 1
+      ? 'Starting native scrcpy control...'
+      : 'Retrying native scrcpy startup...';
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }

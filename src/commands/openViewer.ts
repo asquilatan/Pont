@@ -9,6 +9,11 @@ interface OpenViewerDependencies {
   mirrorSession: MirrorSession;
 }
 
+export interface OpenViewerResult {
+  status: 'started' | 'no-device' | 'failed';
+  error?: string;
+}
+
 /**
  * Opens or reveals the device viewer panel.
  *
@@ -19,7 +24,7 @@ interface OpenViewerDependencies {
  *
  * @param deps - Dependencies required to open the viewer
  */
-export async function openViewerCommand(deps: OpenViewerDependencies): Promise<void> {
+export async function openViewerCommand(deps: OpenViewerDependencies): Promise<OpenViewerResult> {
   const snapshot = deps.session.current;
 
   // Create or reveal the viewer panel
@@ -36,17 +41,29 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<v
     void vscode.window.showInformationMessage(
       'No device connected. Pair a device first using "Android: Pair Device".'
     );
-    return;
+    return { status: 'no-device' };
   }
 
   // Start the mirror session for the connected device
   try {
     // Force deterministic relaunch/reposition each time Open Viewer is invoked.
     await deps.mirrorSession.relaunch(snapshot, panel);
+    return { status: 'started' };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    void vscode.window.showErrorMessage(
-      `Failed to start screen mirror: ${message}`
+    const retryAction = 'Retry Open Viewer';
+    const reconnectAction = 'Reconnect Device';
+    const choice = await vscode.window.showErrorMessage(
+      `Failed to start native control: ${message}`,
+      retryAction,
+      reconnectAction
     );
+    if (choice === retryAction) {
+      return openViewerCommand(deps);
+    }
+    if (choice === reconnectAction) {
+      void vscode.commands.executeCommand('androidWirelessDebugging.pairDevice');
+    }
+    return { status: 'failed', error: message };
   }
 }

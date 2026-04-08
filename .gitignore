@@ -1,6 +1,7 @@
 .gemini/
 .github/
 .planning/
+copilot-instructions.md
 node_modules/
 dist/
 *.bat

@@ -125,7 +125,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       sidebar.setInteractionHealth('idle');
     },
     onRunAppRequested: async () => {
-      await runConnectedAppCommand({ session });
+      const currentAdb = await getAdb();
+      const adbPath = await resolveAdbPath();
+      await runConnectedAppCommand({ session, adbPath });
     },
     onResetRequested: async () => {
       await resetExtension();
@@ -165,7 +167,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       sidebar.setInteractionHealth('idle');
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.runConnectedApp', async () => {
-      await runConnectedAppCommand({ session });
+      const adbPath = await resolveAdbPath();
+      await runConnectedAppCommand({ session, adbPath });
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.resetExtension', async () => {
       await resetExtension();

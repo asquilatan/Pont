@@ -4,6 +4,10 @@
   "description": "Pont for Android development: pair an Android device over wireless debugging and control/view it from VS Code.",
   "version": "0.0.1",
   "publisher": "copilot",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asquilatan/pont.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

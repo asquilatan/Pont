@@ -42,9 +42,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     () => new ScrcpyBridge(),
     context
   );
+  let sidebar: StatusSidebarProvider;
 
   const openViewer = async (): Promise<void> => {
-    await openViewerCommand({ context, session, mirrorSession });
+    sidebar.setInteractionHealth('relaunching');
+    const result = await openViewerCommand({ context, session, mirrorSession });
+    if (result.status === 'started') {
+      sidebar.setInteractionHealth('ready');
+      return;
+    }
+
+    if (result.status === 'failed') {
+      sidebar.setInteractionHealth('failed', result.error);
+      return;
+    }
+
+    sidebar.setInteractionHealth('idle');
   };
 
   const panel = new StatusPanelController(context, () => session.current, {
@@ -62,10 +75,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       session.setDisconnected('Android device disconnected.');
       panel.update();
+      sidebar.setInteractionHealth('idle');
     },
   });
 
-  const sidebar = new StatusSidebarProvider(context, () => session.current, {
+  sidebar = new StatusSidebarProvider(context, () => session.current, {
     onPairRequested: async () => {
       await pairDevice(false);
       sidebar.update();
@@ -83,6 +97,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       session.setDisconnected('Android device disconnected.');
       panel.update();
       sidebar.update();
+      sidebar.setInteractionHealth('idle');
     },
     onRunAppRequested: async () => {
       await runConnectedAppCommand({ session });
@@ -94,6 +109,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewViewProvider(StatusSidebarProvider.viewType, sidebar),
     session.onDidChange((snapshot) => {
       void mirrorSession.handleDeviceStateChange(snapshot);
+      if (snapshot.state !== 'connected') {
+        sidebar.setInteractionHealth('idle');
+      }
       sidebar.update();
       panel.update();
     })
@@ -121,6 +139,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       session.setDisconnected('Android device disconnected.');
       panel.update();
+      sidebar.setInteractionHealth('idle');
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.runConnectedApp', async () => {
       await runConnectedAppCommand({ session });

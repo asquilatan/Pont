@@ -9,6 +9,8 @@ interface StatusSidebarCallbacks {
   onRunAppRequested: () => Promise<void> | void;
 }
 
+type InteractionHealthState = 'idle' | 'relaunching' | 'ready' | 'failed';
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -23,6 +25,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private interactionHealth: { state: InteractionHealthState; message?: string } = { state: 'idle' };
 
   public constructor(
     private readonly context: vscode.ExtensionContext,
@@ -71,6 +74,11 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     this.view.webview.html = this.renderHtml(this.getSnapshot());
   }
 
+  public setInteractionHealth(state: InteractionHealthState, message?: string): void {
+    this.interactionHealth = { state, message };
+    this.update();
+  }
+
   public dispose(): void {
     while (this.disposables.length > 0) {
       this.disposables.pop()?.dispose();
@@ -83,9 +91,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     const body = escapeHtml(vm.body);
     const serial = escapeHtml(snapshot.serial ?? '-');
     const disconnectDisabled = snapshot.state !== 'connected' ? 'disabled' : '';
-    const controlGuidance = snapshot.state === 'connected'
-      ? 'Interaction runs in the native scrcpy window. Open Viewer relaunches and repositions it using your configured placement.'
-      : 'Pair a device, then use Open Viewer to launch the native scrcpy control window.';
+    const controlGuidance = this.getControlGuidance(snapshot.state);
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -137,5 +143,25 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
   </script>
 </body>
 </html>`;
+  }
+
+  private getControlGuidance(snapshotState: DeviceSessionSnapshot['state']): string {
+    if (snapshotState !== 'connected') {
+      return 'Pair a device, then use Open Viewer to launch the native scrcpy control window.';
+    }
+
+    switch (this.interactionHealth.state) {
+      case 'relaunching':
+        return 'Relaunching native scrcpy window with your configured placement...';
+      case 'failed':
+        return this.interactionHealth.message
+          ? `Control startup failed: ${this.interactionHealth.message}`
+          : 'Control startup failed. Use Open Viewer to retry, or reconnect if the device is unstable.';
+      case 'ready':
+        return 'Interactive control is ready in native scrcpy (keyboard + mouse/touch).';
+      case 'idle':
+      default:
+        return 'Interaction runs in the native scrcpy window. Open Viewer relaunches and repositions it using your configured placement.';
+    }
   }
 }

@@ -6,6 +6,7 @@ interface StatusSidebarCallbacks {
   onPairRequested: () => Promise<void> | void;
   onOpenViewerRequested: () => Promise<void> | void;
   onDisconnectRequested: () => Promise<void> | void;
+  onRunAppRequested: () => Promise<void> | void;
 }
 
 function escapeHtml(value: string): string {
@@ -50,6 +51,9 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
             break;
           case 'disconnect-request':
             await this.callbacks.onDisconnectRequested();
+            break;
+          case 'run-app-request':
+            await this.callbacks.onRunAppRequested();
             break;
         }
       },
@@ -117,6 +121,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
       <button class="primary" id="pair">Pair Device</button>
       <button id="viewer">Open Viewer</button>
       <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
+      <button id="run-app" ${disconnectDisabled}>Run App</button>
     </div>
   </section>
   <script>
@@ -124,6 +129,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     document.getElementById('pair').addEventListener('click', () => vscode.postMessage({ type: 'pair-request' }));
     document.getElementById('viewer').addEventListener('click', () => vscode.postMessage({ type: 'open-viewer-request' }));
     document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ type: 'disconnect-request' }));
+    document.getElementById('run-app').addEventListener('click', () => vscode.postMessage({ type: 'run-app-request' }));
   </script>
 </body>
 </html>`;

@@ -15,6 +15,7 @@
     "onCommand:androidWirelessDebugging.openStatusPanel",
     "onCommand:androidWirelessDebugging.openDeviceViewer",
     "onCommand:androidWirelessDebugging.disconnectDevice",
+    "onCommand:androidWirelessDebugging.runConnectedApp",
     "onView:androidWirelessDebugging.sidebar"
   ],
   "main": "./dist/extension.js",
@@ -57,6 +58,11 @@
         "command": "androidWirelessDebugging.disconnectDevice",
         "title": "Android: Disconnect Device",
         "category": "Android Wireless Debugging"
+      },
+      {
+        "command": "androidWirelessDebugging.runConnectedApp",
+        "title": "Android: Run Connected App",
+        "category": "Android Wireless Debugging"
       }
     ],
     "configuration": {
@@ -77,6 +83,11 @@
           "default": 300,
           "minimum": 150,
           "description": "Frame capture interval in milliseconds. Lower values feel more responsive but use more CPU/network."
+        },
+        "androidWirelessDebugging.gradleInstallTask": {
+          "type": "string",
+          "default": "installDebug",
+          "description": "Gradle task used by Android: Run Connected App."
         }
       }
     }

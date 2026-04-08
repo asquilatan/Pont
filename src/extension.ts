@@ -8,6 +8,7 @@ import { StatusPanelController } from './ui/statusPanel';
 import { StatusSidebarProvider } from './ui/statusSidebar';
 import { runPairDeviceFlow } from './commands/pairDevice';
 import { openViewerCommand } from './commands/openViewer';
+import { runConnectedAppCommand } from './commands/runConnectedApp';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new PairingSession();
@@ -75,6 +76,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel.update();
       sidebar.update();
     },
+    onRunAppRequested: async () => {
+      await runConnectedAppCommand({ session });
+    },
   });
 
   // Wire device state changes to mirror session
@@ -109,6 +113,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       session.setDisconnected('Android device disconnected.');
       panel.update();
+    }),
+    vscode.commands.registerCommand('androidWirelessDebugging.runConnectedApp', async () => {
+      await runConnectedAppCommand({ session });
     })
   );
 }

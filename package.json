@@ -16,6 +16,7 @@
     "onCommand:androidWirelessDebugging.openDeviceViewer",
     "onCommand:androidWirelessDebugging.disconnectDevice",
     "onCommand:androidWirelessDebugging.runConnectedApp",
+    "onCommand:androidWirelessDebugging.resetExtension",
     "onView:androidWirelessDebugging.sidebar"
   ],
   "main": "./dist/extension.js",
@@ -62,6 +63,11 @@
       {
         "command": "androidWirelessDebugging.runConnectedApp",
         "title": "Android: Run Connected App",
+        "category": "Android Wireless Debugging"
+      },
+      {
+        "command": "androidWirelessDebugging.resetExtension",
+        "title": "Android: Reset Extension",
         "category": "Android Wireless Debugging"
       }
     ],

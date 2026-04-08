@@ -7,6 +7,7 @@ interface StatusSidebarCallbacks {
   onOpenViewerRequested: () => Promise<void> | void;
   onDisconnectRequested: () => Promise<void> | void;
   onRunAppRequested: () => Promise<void> | void;
+  onResetRequested: () => Promise<void> | void;
 }
 
 type InteractionHealthState = 'idle' | 'relaunching' | 'ready' | 'failed';
@@ -57,6 +58,9 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
             break;
           case 'run-app-request':
             await this.callbacks.onRunAppRequested();
+            break;
+          case 'reset-request':
+            await this.callbacks.onResetRequested();
             break;
         }
       },
@@ -132,6 +136,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
       <button id="viewer">Open Viewer (Relaunch scrcpy)</button>
       <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
       <button id="run-app" ${disconnectDisabled}>Run App</button>
+      <button id="reset">Reset Extension</button>
     </div>
   </section>
   <script>
@@ -140,6 +145,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     document.getElementById('viewer').addEventListener('click', () => vscode.postMessage({ type: 'open-viewer-request' }));
     document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ type: 'disconnect-request' }));
     document.getElementById('run-app').addEventListener('click', () => vscode.postMessage({ type: 'run-app-request' }));
+    document.getElementById('reset').addEventListener('click', () => vscode.postMessage({ type: 'reset-request' }));
   </script>
 </body>
 </html>`;
@@ -156,7 +162,7 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
       case 'failed':
         return this.interactionHealth.message
           ? `Control startup failed: ${this.interactionHealth.message}`
-          : 'Control startup failed. Use Open Viewer to retry, or reconnect if the device is unstable.';
+          : 'Control startup failed. Use Open Viewer to retry, or Reset Extension to clear state.';
       case 'ready':
         return 'Interactive control is ready in native scrcpy (keyboard + mouse/touch).';
       case 'idle':

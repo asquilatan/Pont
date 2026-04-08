@@ -138,7 +138,7 @@ export class ScrcpyBridge implements vscode.Disposable {
     this.serial = undefined;
 
     if (this.process) {
-      this.process.kill('SIGTERM', { forceKillAfterTimeout: 2000 });
+      this.process.kill('SIGTERM');
       this.process = undefined;
     }
 

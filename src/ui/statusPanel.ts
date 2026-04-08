@@ -6,6 +6,7 @@ interface StatusPanelCallbacks {
   onPairRequested: () => Promise<void> | void;
   onOpenViewerRequested: () => void;
   onDisconnectRequested: () => Promise<void> | void;
+  onResetRequested: () => Promise<void> | void;
 }
 
 function escapeHtml(value: string): string {
@@ -62,6 +63,9 @@ export class StatusPanelController implements vscode.Disposable {
             return;
           case 'refresh-request':
             this.update();
+            return;
+          case 'reset-request':
+            await this.callbacks.onResetRequested();
             return;
         }
       },
@@ -223,6 +227,7 @@ export class StatusPanelController implements vscode.Disposable {
         <button class="primary" id="pair">Pair Android Device</button>
         <button id="viewer">Open Device Viewer</button>
         <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
+        <button id="reset">Reset Extension</button>
       </div>
       <div class="meta">Current state: ${state} · Device: ${serial}</div>
     </section>
@@ -232,6 +237,7 @@ export class StatusPanelController implements vscode.Disposable {
     document.getElementById('pair').addEventListener('click', () => vscode.postMessage({ type: 'pair-request' }));
     document.getElementById('viewer').addEventListener('click', () => vscode.postMessage({ type: 'open-viewer-request' }));
     document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ type: 'disconnect-request' }));
+    document.getElementById('reset').addEventListener('click', () => vscode.postMessage({ type: 'reset-request' }));
     window.addEventListener('message', (event) => {
       if (!event.data || event.data.type !== 'session-update') {
         return;

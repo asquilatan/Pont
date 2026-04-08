@@ -29,6 +29,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
+  const resetExtension = async (): Promise<void> => {
+    await mirrorSession.stop(false);
+    session.reset();
+  };
+
   const getAdb = async (): Promise<AdbBridge> => {
     if (!adb) {
       adb = new AdbBridge(await resolveAdbPath());
@@ -77,6 +82,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel.update();
       sidebar.setInteractionHealth('idle');
     },
+    onResetRequested: async () => {
+      await resetExtension();
+    },
   });
 
   sidebar = new StatusSidebarProvider(context, () => session.current, {
@@ -101,6 +109,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     onRunAppRequested: async () => {
       await runConnectedAppCommand({ session });
+    },
+    onResetRequested: async () => {
+      await resetExtension();
     },
   });
 
@@ -143,6 +154,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.runConnectedApp', async () => {
       await runConnectedAppCommand({ session });
+    }),
+    vscode.commands.registerCommand('androidWirelessDebugging.resetExtension', async () => {
+      await resetExtension();
     })
   );
 }

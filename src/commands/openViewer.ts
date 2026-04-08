@@ -52,17 +52,17 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<O
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const retryAction = 'Retry Open Viewer';
-    const reconnectAction = 'Reconnect Device';
+    const resetAction = 'Reset Extension';
     const choice = await vscode.window.showErrorMessage(
       `Failed to start native control: ${message}`,
       retryAction,
-      reconnectAction
+      resetAction
     );
     if (choice === retryAction) {
       return openViewerCommand(deps);
     }
-    if (choice === reconnectAction) {
-      void vscode.commands.executeCommand('androidWirelessDebugging.pairDevice');
+    if (choice === resetAction) {
+      await vscode.commands.executeCommand('androidWirelessDebugging.resetExtension');
     }
     return { status: 'failed', error: message };
   }

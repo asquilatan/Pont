@@ -13,10 +13,30 @@
   "activationEvents": [
     "onCommand:androidWirelessDebugging.pairDevice",
     "onCommand:androidWirelessDebugging.openStatusPanel",
-    "onCommand:androidWirelessDebugging.openDeviceViewer"
+    "onCommand:androidWirelessDebugging.openDeviceViewer",
+    "onCommand:androidWirelessDebugging.disconnectDevice",
+    "onView:androidWirelessDebugging.sidebar"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "androidWirelessDebugging",
+          "title": "Android",
+          "icon": "media\\android.svg"
+        }
+      ]
+    },
+    "views": {
+      "androidWirelessDebugging": [
+        {
+          "type": "webview",
+          "id": "androidWirelessDebugging.sidebar",
+          "name": "Device"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "androidWirelessDebugging.pairDevice",
@@ -32,6 +52,11 @@
         "command": "androidWirelessDebugging.openDeviceViewer",
         "title": "Android: Open Device Viewer",
         "category": "Android Wireless Debugging"
+      },
+      {
+        "command": "androidWirelessDebugging.disconnectDevice",
+        "title": "Android: Disconnect Device",
+        "category": "Android Wireless Debugging"
       }
     ],
     "configuration": {
@@ -46,6 +71,12 @@
           "type": "string",
           "default": "",
           "description": "Path to the scrcpy executable. Leave empty to use scrcpy from PATH."
+        },
+        "androidWirelessDebugging.frameIntervalMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 150,
+          "description": "Frame capture interval in milliseconds. Lower values feel more responsive but use more CPU/network."
         }
       }
     }
@@ -58,12 +89,10 @@
     "vscode:prepublish": "npm run package"
   },
   "dependencies": {
-    "execa": "^9.5.2",
-    "qrcode": "^1.5.4"
+    "execa": "^9.5.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
-    "@types/qrcode": "^1.5.6",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.1",
     "typescript": "^5.8.3"

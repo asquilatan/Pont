@@ -1,0 +1,69 @@
+{
+  "name": "android-wireless-debugging-vscode",
+  "displayName": "Android Wireless Debugging",
+  "description": "Pair an Android device over wireless debugging and view its state in VS Code.",
+  "version": "0.0.1",
+  "publisher": "copilot",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:androidWirelessDebugging.pairDevice",
+    "onCommand:androidWirelessDebugging.openStatusPanel",
+    "onCommand:androidWirelessDebugging.openDeviceViewer"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "androidWirelessDebugging.pairDevice",
+        "title": "Android: Pair Device",
+        "category": "Android Wireless Debugging"
+      },
+      {
+        "command": "androidWirelessDebugging.openStatusPanel",
+        "title": "Android: Open Device Status",
+        "category": "Android Wireless Debugging"
+      },
+      {
+        "command": "androidWirelessDebugging.openDeviceViewer",
+        "title": "Android: Open Device Viewer",
+        "category": "Android Wireless Debugging"
+      }
+    ],
+    "configuration": {
+      "title": "Android Wireless Debugging",
+      "properties": {
+        "androidWirelessDebugging.adbPath": {
+          "type": "string",
+          "default": "adb",
+          "description": "Path to the adb executable."
+        },
+        "androidWirelessDebugging.scrcpyPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the scrcpy executable. Leave empty to use scrcpy from PATH."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "npm run check-types && node esbuild.js --production",
+    "vscode:prepublish": "npm run package"
+  },
+  "dependencies": {
+    "execa": "^9.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.1",
+    "typescript": "^5.8.3"
+  }
+}

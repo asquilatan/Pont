@@ -5,6 +5,7 @@ import type { DeviceSessionSnapshot } from '../types';
 interface StatusPanelCallbacks {
   onPairRequested: () => Promise<void> | void;
   onOpenViewerRequested: () => void;
+  onDisconnectRequested: () => Promise<void> | void;
 }
 
 function escapeHtml(value: string): string {
@@ -56,6 +57,9 @@ export class StatusPanelController implements vscode.Disposable {
           case 'open-viewer-request':
             this.callbacks.onOpenViewerRequested();
             return;
+          case 'disconnect-request':
+            await this.callbacks.onDisconnectRequested();
+            return;
           case 'refresh-request':
             this.update();
             return;
@@ -93,6 +97,8 @@ export class StatusPanelController implements vscode.Disposable {
     const body = escapeHtml(viewModel.body);
     const title = escapeHtml(viewModel.title);
     const state = escapeHtml(snapshot.state);
+    const serial = escapeHtml(snapshot.serial ?? '-');
+    const disconnectDisabled = snapshot.state !== 'connected' ? 'disabled' : '';
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -216,14 +222,16 @@ export class StatusPanelController implements vscode.Disposable {
       <div class="actions">
         <button class="primary" id="pair">Pair Android Device</button>
         <button id="viewer">Open Device Viewer</button>
+        <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
       </div>
-      <div class="meta">Current state: ${state}</div>
+      <div class="meta">Current state: ${state} · Device: ${serial}</div>
     </section>
   </main>
   <script>
     const vscode = acquireVsCodeApi();
     document.getElementById('pair').addEventListener('click', () => vscode.postMessage({ type: 'pair-request' }));
     document.getElementById('viewer').addEventListener('click', () => vscode.postMessage({ type: 'open-viewer-request' }));
+    document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ type: 'disconnect-request' }));
     window.addEventListener('message', (event) => {
       if (!event.data || event.data.type !== 'session-update') {
         return;

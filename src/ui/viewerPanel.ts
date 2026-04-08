@@ -78,7 +78,8 @@ export class ViewerPanel {
     void this.panel.webview.postMessage({
       type: 'state-update',
       state: state.viewerState,
-      error: state.error
+      error: state.error,
+      serial: snapshot.serial
     });
   }
 
@@ -203,6 +204,17 @@ export class ViewerPanel {
       display: block;
     }
 
+    .viewer-meta {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      pointer-events: none;
+    }
+
     .placeholder {
       display: flex;
       flex-direction: column;
@@ -263,6 +275,7 @@ export class ViewerPanel {
   </style>
 </head>
 <body>
+  <div id="viewer-meta" class="viewer-meta">Device: -</div>
   <div class="viewer-container">
     <!-- Canvas for rendering the device screen (hidden by default) -->
     <canvas id="viewer-canvas" class="viewer-canvas"></canvas>
@@ -283,6 +296,13 @@ export class ViewerPanel {
       <span class="status-badge tone-neutral">Disconnected</span>
     </div>
 
+    <div id="placeholder-connected" class="placeholder hidden">
+      <div class="placeholder-icon">🖥️</div>
+      <h2 class="placeholder-title">Mirror running in scrcpy window</h2>
+      <p class="placeholder-body">Real-time mirror is active in a native scrcpy window for better performance.</p>
+      <span class="status-badge tone-success">Connected</span>
+    </div>
+
     <div id="placeholder-error" class="placeholder hidden">
       <div class="placeholder-icon">⚠️</div>
       <h2 class="placeholder-title">Connection Error</h2>
@@ -296,24 +316,30 @@ export class ViewerPanel {
 
     const canvas = document.getElementById('viewer-canvas');
     const placeholderLoading = document.getElementById('placeholder-loading');
+    const placeholderConnected = document.getElementById('placeholder-connected');
     const placeholderDisconnected = document.getElementById('placeholder-disconnected');
     const placeholderError = document.getElementById('placeholder-error');
     const errorMessage = document.getElementById('error-message');
+    const viewerMeta = document.getElementById('viewer-meta');
 
     /**
      * Show a specific placeholder state.
-     * @param {'loading' | 'disconnected' | 'error'} state
+     * @param {'loading' | 'connected' | 'disconnected' | 'error'} state
      * @param {string} [message] - Error message if state is 'error'
      */
     function showPlaceholder(state, message) {
       canvas.classList.remove('visible');
       placeholderLoading.classList.add('hidden');
+      placeholderConnected.classList.add('hidden');
       placeholderDisconnected.classList.add('hidden');
       placeholderError.classList.add('hidden');
 
       switch (state) {
         case 'loading':
           placeholderLoading.classList.remove('hidden');
+          break;
+        case 'connected':
+          placeholderConnected.classList.remove('hidden');
           break;
         case 'disconnected':
           placeholderDisconnected.classList.remove('hidden');
@@ -344,10 +370,15 @@ export class ViewerPanel {
         if (!context) {
           return;
         }
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
+        const maxLongEdge = 860;
+        const longEdge = Math.max(image.naturalWidth, image.naturalHeight);
+        const scale = longEdge > maxLongEdge ? maxLongEdge / longEdge : 1;
+        const width = Math.max(1, Math.floor(image.naturalWidth * scale));
+        const height = Math.max(1, Math.floor(image.naturalHeight * scale));
+        canvas.width = width;
+        canvas.height = height;
         context.clearRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0);
+        context.drawImage(image, 0, 0, width, height);
         showCanvas();
       };
       image.src = dataUrl;
@@ -359,7 +390,7 @@ export class ViewerPanel {
 
       switch (message.type) {
         case 'state-update':
-          handleStateUpdate(message.state, message.error);
+          handleStateUpdate(message.state, message.error, message.serial);
           break;
         case 'frame-data':
           if (message.dataUrl) {
@@ -374,13 +405,16 @@ export class ViewerPanel {
      * @param {'loading' | 'connected' | 'disconnected' | 'error'} state
      * @param {string} [error]
      */
-    function handleStateUpdate(state, error) {
+    function handleStateUpdate(state, error, serial) {
+      if (viewerMeta) {
+        viewerMeta.textContent = 'Device: ' + (serial || '-');
+      }
       switch (state) {
         case 'loading':
           showPlaceholder('loading');
           break;
         case 'connected':
-          showCanvas();
+          showPlaceholder('connected');
           break;
         case 'disconnected':
           showPlaceholder('disconnected');

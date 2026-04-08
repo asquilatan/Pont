@@ -14,16 +14,16 @@ export interface BridgeFrameData {
 export class ScrcpyBridge implements vscode.Disposable {
   private readonly stateEmitter = new vscode.EventEmitter<BridgeStateChange>();
   private readonly frameEmitter = new vscode.EventEmitter<BridgeFrameData>();
-  private timer: NodeJS.Timeout | undefined;
   private disposed = false;
   private serial: string | undefined;
   private adb: AdbBridge | undefined;
+  private process: any;
 
   public readonly onDidChangeState = this.stateEmitter.event;
   public readonly onDidFrameData = this.frameEmitter.event;
 
   public async start(serial: string): Promise<void> {
-    if (this.timer) {
+    if (this.process) {
       throw new Error('Mirror process is already running');
     }
 
@@ -36,51 +36,55 @@ export class ScrcpyBridge implements vscode.Disposable {
 
     const adbPath = vscode.workspace.getConfiguration('androidWirelessDebugging').get<string>('adbPath') ?? 'adb';
     this.adb = new AdbBridge(adbPath);
+    this.serial = await this.resolveUsableSerial(this.serial);
+    const activeSerial = this.serial;
+    if (!activeSerial) {
+      throw new Error('No connected Android device is available for scrcpy.');
+    }
+
+    const scrcpyPath = await resolveScrcpyPath();
+    const { execa } = await import('execa');
+    const process = execa(
+      scrcpyPath,
+      ['-s', activeSerial, '--no-audio', '--window-title', `Android Device Viewer (${activeSerial})`],
+      { all: true, reject: false, windowsHide: false }
+    );
+    this.process = process;
 
     this.emitState({ status: 'running' });
-    void this.captureLoop();
+    process.then((result) => {
+      if (this.disposed) {
+        return;
+      }
+      this.process = undefined;
+      if (result.exitCode === 0) {
+        this.emitState({ status: 'stopped' });
+        return;
+      }
+      const output = (result.all ?? result.stdout ?? result.stderr ?? '').toString();
+      this.emitState({ status: 'error', error: this.formatError(output) });
+    }).catch((error: unknown) => {
+      if (this.disposed) {
+        return;
+      }
+      this.process = undefined;
+      const message = error instanceof Error ? error.message : String(error);
+      this.emitState({ status: 'error', error: this.formatError(message) });
+    });
   }
 
   public stop(emitStopped = true): void {
     this.disposed = true;
     this.serial = undefined;
 
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
+    if (this.process) {
+      this.process.kill('SIGTERM', { forceKillAfterTimeout: 2000 });
+      this.process = undefined;
     }
 
     if (emitStopped) {
       this.emitState({ status: 'stopped' });
     }
-  }
-
-  private async captureLoop(): Promise<void> {
-    if (this.disposed || !this.serial || !this.adb) {
-      return;
-    }
-
-    try {
-      const screenshot = await this.adb.captureScreenshot(this.serial);
-      if (this.disposed) {
-        return;
-      }
-      const dataUrl = `data:image/png;base64,${Buffer.from(screenshot).toString('base64')}`;
-      this.frameEmitter.fire({ dataUrl });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.emitState({ status: 'error', error: this.formatError(message) });
-      this.stop(false);
-      return;
-    }
-
-    if (this.disposed) {
-      return;
-    }
-
-    this.timer = setTimeout(() => {
-      void this.captureLoop();
-    }, 800);
   }
 
   private formatError(message: string): string {
@@ -97,6 +101,40 @@ export class ScrcpyBridge implements vscode.Disposable {
     }
 
     return message;
+  }
+
+  private async resolveUsableSerial(serial: string | undefined): Promise<string | undefined> {
+    if (!this.adb) {
+      return serial;
+    }
+
+    try {
+      const output = await this.adb.listDevices();
+      const devices = output
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('List of devices attached'))
+        .map((line) => line.split(/\s+/))
+        .filter((parts) => parts.length > 1 && parts[1] === 'device')
+        .map((parts) => parts[0]);
+
+      if (serial && devices.includes(serial)) {
+        return serial;
+      }
+
+      const tcpDevices = devices.filter((value) => value.includes(':'));
+      if (tcpDevices.length === 1) {
+        return tcpDevices[0];
+      }
+
+      if (devices.length === 1) {
+        return devices[0];
+      }
+    } catch {
+      return serial;
+    }
+
+    return serial;
   }
 
   private emitState(state: BridgeStateChange): void {

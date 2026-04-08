@@ -1,6 +1,6 @@
 export type ConnectionState = 'disconnected' | 'pairing' | 'connected' | 'failed';
 
-export type PairingMethod = 'pairing-code' | 'qr-code';
+export type PairingMethod = 'pairing-code';
 
 export interface PairingTarget {
   method: PairingMethod;

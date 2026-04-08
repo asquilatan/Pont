@@ -4,6 +4,7 @@ export interface WirelessServiceEndpoint {
   host: string;
   port: number;
   label: string;
+  kind: 'pairing' | 'connect' | 'unknown';
 }
 
 export class AdbBridge {
@@ -36,6 +37,14 @@ export class AdbBridge {
     return connectResult.all ?? connectResult.stdout ?? '';
   }
 
+  public async disconnect(serial: string): Promise<string> {
+    const { execa } = await import('execa');
+    const result = await execa(this.adbPath, ['disconnect', serial], {
+      all: true,
+    });
+    return result.all ?? result.stdout ?? '';
+  }
+
   public async listDevices(): Promise<string> {
     const { execa } = await import('execa');
     const result = await execa(this.adbPath, ['devices', '-l'], {
@@ -52,21 +61,29 @@ export class AdbBridge {
 
     const output = (result.all ?? result.stdout ?? '').toString();
     const endpoints: WirelessServiceEndpoint[] = [];
+    const seen = new Set<string>();
 
     for (const line of output.split(/\r?\n/)) {
       if (!line.toLowerCase().includes('adb')) {
         continue;
       }
 
-      const match = line.match(/(?<host>(?:\d{1,3}\.){3}\d{1,3}|[\w.-]+):(?<port>\d{2,5})/);
-      if (!match?.groups?.host || !match.groups.port) {
+      const parsed = this.parseHostPort(line);
+      if (!parsed) {
         continue;
       }
 
+      const key = `${parsed.host}:${parsed.port}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+
       endpoints.push({
-        host: match.groups.host,
-        port: Number.parseInt(match.groups.port, 10),
+        host: parsed.host,
+        port: parsed.port,
         label: line.trim(),
+        kind: this.detectServiceKind(line),
       });
     }
 
@@ -79,5 +96,36 @@ export class AdbBridge {
       encoding: 'buffer',
     });
     return Buffer.from(result.stdout as Buffer);
+  }
+
+  private detectServiceKind(line: string): 'pairing' | 'connect' | 'unknown' {
+    const normalized = line.toLowerCase();
+    if (normalized.includes('adb-tls-pairing')) {
+      return 'pairing';
+    }
+    if (normalized.includes('adb-tls-connect')) {
+      return 'connect';
+    }
+    return 'unknown';
+  }
+
+  private parseHostPort(line: string): { host: string; port: number } | undefined {
+    const colonMatch = line.match(/(?<host>(?:\d{1,3}\.){3}\d{1,3}|[\w.-]+):(?<port>\d{2,5})/);
+    if (colonMatch?.groups?.host && colonMatch.groups.port) {
+      return {
+        host: colonMatch.groups.host,
+        port: Number.parseInt(colonMatch.groups.port, 10),
+      };
+    }
+
+    const spacedMatch = line.match(/(?<host>(?:\d{1,3}\.){3}\d{1,3}|[\w.-]+)\s+(?<port>\d{2,5})\b/);
+    if (spacedMatch?.groups?.host && spacedMatch.groups.port) {
+      return {
+        host: spacedMatch.groups.host,
+        port: Number.parseInt(spacedMatch.groups.port, 10),
+      };
+    }
+
+    return undefined;
   }
 }

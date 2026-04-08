@@ -10,6 +10,7 @@ function adbExecutableName(): string {
 function candidatePaths(): string[] {
   const executable = adbExecutableName();
   const home = os.homedir();
+  const userProfile = process.env.USERPROFILE;
   const localAppData = process.env.LOCALAPPDATA;
   const androidHome = process.env.ANDROID_HOME;
   const androidSdkRoot = process.env.ANDROID_SDK_ROOT;
@@ -18,6 +19,8 @@ function candidatePaths(): string[] {
     androidHome ? path.join(androidHome, 'platform-tools', executable) : undefined,
     androidSdkRoot ? path.join(androidSdkRoot, 'platform-tools', executable) : undefined,
     localAppData ? path.join(localAppData, 'Android', 'Sdk', 'platform-tools', executable) : undefined,
+    userProfile ? path.join(userProfile, 'AppData', 'Local', 'Android Studio', 'platform-tools', executable) : undefined,
+    userProfile ? path.join(userProfile, 'AppData', 'Local', 'Android', 'Sdk', 'platform-tools', executable) : undefined,
     path.join(home, 'AppData', 'Local', 'Android Studio', 'platform-tools', executable),
     path.join(home, 'Android', 'Sdk', 'platform-tools', executable),
     path.join(home, 'AppData', 'Local', 'Android', 'Sdk', 'platform-tools', executable),

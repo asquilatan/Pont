@@ -250,9 +250,33 @@ async function executePairing(
     await deps.adb.ensureAvailable();
     const beforeDevices = await deps.adb.listDevices();
     await deps.adb.pair(target);
-    const connectOutput = await deps.adb.connect(connectHost, connectPort);
-    const afterDevices = await deps.adb.listDevices();
-    const serial = resolveConnectedSerial(connectHost, connectPort, connectOutput, beforeDevices, afterDevices);
+    let connectOutput = await deps.adb.connect(connectHost, connectPort);
+    let afterDevices = await deps.adb.listDevices();
+    let serial = resolveConnectedSerial(connectHost, connectPort, connectOutput, beforeDevices, afterDevices);
+
+    if (!isConnectedDeviceSerial(afterDevices, serial)) {
+      const endpoints = await deps.adb.discoverWirelessEndpoints();
+      const fallbackConnect = endpoints.find(
+        (endpoint) => endpoint.host === connectHost && endpoint.kind === 'connect' && endpoint.port !== connectPort
+      );
+
+      if (fallbackConnect) {
+        connectOutput = await deps.adb.connect(fallbackConnect.host, fallbackConnect.port);
+        afterDevices = await deps.adb.listDevices();
+        serial = resolveConnectedSerial(
+          fallbackConnect.host,
+          fallbackConnect.port,
+          connectOutput,
+          beforeDevices,
+          afterDevices
+        );
+      }
+    }
+
+    if (!isConnectedDeviceSerial(afterDevices, serial)) {
+      throw new Error('Device is connected but offline. Toggle Wireless debugging on the phone and retry pairing.');
+    }
+
     deps.session.setConnected(serial, connectOutput.trim() || 'Android device connected.');
     deps.panel.update();
     return true;
@@ -306,6 +330,17 @@ function parseConnectedTcpSerials(devicesOutput: string): string[] {
     .filter((parts) => parts.length > 1 && parts[1] === 'device')
     .map((parts) => parts[0])
     .filter((serial) => serial.includes(':'));
+}
+
+function isConnectedDeviceSerial(devicesOutput: string, serial: string): boolean {
+  const entries = devicesOutput
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('List of devices attached'))
+    .map((line) => line.split(/\s+/))
+    .filter((parts) => parts.length > 1);
+
+  return entries.some((parts) => parts[0] === serial && parts[1] === 'device');
 }
 
 function toErrorMessage(error: unknown): string {

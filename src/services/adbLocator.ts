@@ -53,7 +53,37 @@ export async function resolveAdbPath(): Promise<string> {
     return 'adb';
   }
 
-  throw new Error(
-    'Unable to find adb. Install Android platform-tools or set "androidWirelessDebugging.adbPath" to your adb executable.'
+  const browse = await vscode.window.showErrorMessage(
+    'Unable to find adb. Install Android platform-tools or choose your adb executable.',
+    'Browse for adb'
   );
+
+  if (browse !== 'Browse for adb') {
+    throw new Error(
+      'Unable to find adb. Install Android platform-tools or set "androidWirelessDebugging.adbPath" to your adb executable.'
+    );
+  }
+
+  const selected = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    openLabel: 'Use selected adb executable',
+    filters: process.platform === 'win32' ? { 'Executable files': ['exe'] } : undefined,
+  });
+
+  const adbPath = selected?.[0]?.fsPath;
+  if (!adbPath || !(await isWorkingAdb(adbPath))) {
+    throw new Error(
+      'Unable to find a working adb executable. Install Android platform-tools or set "androidWirelessDebugging.adbPath".'
+    );
+  }
+
+  await vscode.workspace.getConfiguration('androidWirelessDebugging').update(
+    'adbPath',
+    adbPath,
+    vscode.ConfigurationTarget.Workspace
+  );
+
+  return adbPath;
 }

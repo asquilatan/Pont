@@ -44,9 +44,31 @@ export class ScrcpyBridge implements vscode.Disposable {
 
     const scrcpyPath = await resolveScrcpyPath();
     const { execa } = await import('execa');
+    const config = vscode.workspace.getConfiguration('androidWirelessDebugging');
+    const windowX = config.get<number>('scrcpyWindowX');
+    const windowY = config.get<number>('scrcpyWindowY');
+    const windowWidth = config.get<number>('scrcpyWindowWidth');
+    const windowHeight = config.get<number>('scrcpyWindowHeight');
+    const alwaysOnTop = config.get<boolean>('scrcpyAlwaysOnTop') ?? true;
+    const args = ['-s', activeSerial, '--no-audio', '--window-title', `Android Device Viewer (${activeSerial})`];
+    if (alwaysOnTop) {
+      args.push('--always-on-top');
+    }
+    if (typeof windowX === 'number') {
+      args.push('--window-x', `${Math.floor(windowX)}`);
+    }
+    if (typeof windowY === 'number') {
+      args.push('--window-y', `${Math.floor(windowY)}`);
+    }
+    if (typeof windowWidth === 'number' && windowWidth > 0) {
+      args.push('--window-width', `${Math.floor(windowWidth)}`);
+    }
+    if (typeof windowHeight === 'number' && windowHeight > 0) {
+      args.push('--window-height', `${Math.floor(windowHeight)}`);
+    }
     const process = execa(
       scrcpyPath,
-      ['-s', activeSerial, '--no-audio', '--window-title', `Android Device Viewer (${activeSerial})`],
+      args,
       { all: true, reject: false, windowsHide: false }
     );
     this.process = process;

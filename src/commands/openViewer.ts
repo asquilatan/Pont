@@ -40,7 +40,7 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<v
   }
 
   if (deps.mirrorSession.isActive) {
-    return;
+    await deps.mirrorSession.stop(false);
   }
 
   // Start the mirror session for the connected device

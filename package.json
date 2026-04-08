@@ -88,6 +88,31 @@
           "type": "string",
           "default": "installDebug",
           "description": "Gradle task used by Android: Run Connected App."
+        },
+        "androidWirelessDebugging.scrcpyAlwaysOnTop": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the native scrcpy viewer window on top."
+        },
+        "androidWirelessDebugging.scrcpyWindowX": {
+          "type": "number",
+          "default": 60,
+          "description": "Initial X position of the native scrcpy window."
+        },
+        "androidWirelessDebugging.scrcpyWindowY": {
+          "type": "number",
+          "default": 60,
+          "description": "Initial Y position of the native scrcpy window."
+        },
+        "androidWirelessDebugging.scrcpyWindowWidth": {
+          "type": "number",
+          "default": 460,
+          "description": "Initial width of the native scrcpy window."
+        },
+        "androidWirelessDebugging.scrcpyWindowHeight": {
+          "type": "number",
+          "default": 920,
+          "description": "Initial height of the native scrcpy window."
         }
       }
     }

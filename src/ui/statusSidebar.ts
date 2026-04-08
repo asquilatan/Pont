@@ -83,6 +83,9 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     const body = escapeHtml(vm.body);
     const serial = escapeHtml(snapshot.serial ?? '-');
     const disconnectDisabled = snapshot.state !== 'connected' ? 'disabled' : '';
+    const controlGuidance = snapshot.state === 'connected'
+      ? 'Interaction runs in the native scrcpy window. Open Viewer relaunches and repositions it using your configured placement.'
+      : 'Pair a device, then use Open Viewer to launch the native scrcpy control window.';
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -117,9 +120,10 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     <div class="title">${title}</div>
     <div class="meta">${body}</div>
     <div class="meta">Device: ${serial}</div>
+    <div class="meta">${escapeHtml(controlGuidance)}</div>
     <div class="actions">
       <button class="primary" id="pair">Pair Device</button>
-      <button id="viewer">Open Viewer</button>
+      <button id="viewer">Open Viewer (Relaunch scrcpy)</button>
       <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
       <button id="run-app" ${disconnectDisabled}>Run App</button>
     </div>

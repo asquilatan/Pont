@@ -169,11 +169,21 @@ export class MirrorSession implements vscode.Disposable {
         this.updatePanelState('connected', undefined);
         break;
       case 'stopped':
+        this.clearBridgeState();
         this.updatePanelState('disconnected', undefined);
         break;
       case 'error':
+        this.clearBridgeState();
         this.updatePanelState('error', state.error);
         break;
+    }
+  }
+
+  private clearBridgeState(): void {
+    this.bridge = undefined;
+    this.currentSerial = undefined;
+    while (this.disposables.length > 0) {
+      this.disposables.pop()?.dispose();
     }
   }
 

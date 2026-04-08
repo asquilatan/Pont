@@ -1,7 +1,7 @@
 {
-  "name": "android-wireless-debugging-vscode",
-  "displayName": "Android Wireless Debugging",
-  "description": "Pair an Android device over wireless debugging and view its state in VS Code.",
+  "name": "pont",
+  "displayName": "Pont",
+  "description": "Pont for Android development: pair an Android device over wireless debugging and control/view it from VS Code.",
   "version": "0.0.1",
   "publisher": "copilot",
   "engines": {

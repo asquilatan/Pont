@@ -1,6 +1,6 @@
-# Android Wireless Debugging (VS Code Extension)
+# Pont (VS Code Extension)
 
-Android Wireless Debugging helps Android developers pair a phone over Wi-Fi and control/view it from VS Code using native `adb` + `scrcpy`.
+Pont helps Android developers pair a phone over Wi-Fi and control/view it from VS Code using native `adb` + `scrcpy`.
 
 I built this specifically for Android development workflows, so you can pair, mirror, and run app tasks without leaving the editor.
 
@@ -24,7 +24,7 @@ I built this specifically for Android development workflows, so you can pair, mi
 
 ## Installation (for users)
 
-### Option 1: Install from VSIX file
+Install from VSIX only:
 
 1. Build/package the extension:
    - `npm install`
@@ -34,15 +34,6 @@ I built this specifically for Android development workflows, so you can pair, mi
 3. Install in VS Code:
    - Command Palette -> `Extensions: Install from VSIX...`
    - Pick the generated `.vsix` file
-
-### Option 2: Publish to VS Code Marketplace
-
-1. Create a publisher in Visual Studio Marketplace
-2. Login with `vsce`
-3. Publish:
-   - `npx @vscode/vsce publish`
-
-Then users can install it directly from the Extensions Marketplace.
 
 ## Development setup (start/install project)
 
@@ -79,12 +70,6 @@ Use VS Code settings under `androidWirelessDebugging.*`:
 - `scrcpyWindowY`
 - `scrcpyWindowWidth`
 - `scrcpyWindowHeight`
-
-## Packaging and distribution notes
-
-- This project is a **VS Code extension**, not a mobile app.
-- There is **no APK** to distribute.
-- Distributable output is a **`.vsix`** extension package (or Marketplace publication).
 
 ## Scripts
 

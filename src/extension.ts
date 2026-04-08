@@ -29,9 +29,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
+  const disconnectActiveDevice = async (message = 'Android device disconnected.'): Promise<void> => {
+    const snapshot = session.current;
+    if (!snapshot.serial) {
+      return;
+    }
+    await mirrorSession.stop(false);
+    const currentAdb = await getAdb();
+    await currentAdb.disconnect(snapshot.serial);
+    session.setDisconnected(message);
+  };
+
   const resetExtension = async (): Promise<void> => {
+    await disconnectActiveDevice('Android device disconnected by reset.');
     await mirrorSession.stop(false);
     session.reset();
+    panel.update();
+    sidebar.update();
+    sidebar.setInteractionHealth('idle');
   };
 
   const getAdb = async (): Promise<AdbBridge> => {
@@ -48,8 +63,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context
   );
   let sidebar: StatusSidebarProvider;
+  let openViewerInFlight: Promise<void> | undefined;
 
   const openViewer = async (): Promise<void> => {
+    if (openViewerInFlight) {
+      return openViewerInFlight;
+    }
+    openViewerInFlight = (async () => {
     sidebar.setInteractionHealth('relaunching');
     const result = await openViewerCommand({ context, session, mirrorSession });
     if (result.status === 'started') {
@@ -63,6 +83,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     sidebar.setInteractionHealth('idle');
+    })();
+
+    try {
+      await openViewerInFlight;
+    } finally {
+      openViewerInFlight = undefined;
+    }
   };
 
   const panel = new StatusPanelController(context, () => session.current, {
@@ -73,12 +100,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await openViewer();
     },
     onDisconnectRequested: async () => {
-      const snapshot = session.current;
-      if (snapshot.serial) {
-        const currentAdb = await getAdb();
-        await currentAdb.disconnect(snapshot.serial);
-      }
-      session.setDisconnected('Android device disconnected.');
+      await disconnectActiveDevice('Android device disconnected.');
       panel.update();
       sidebar.setInteractionHealth('idle');
     },
@@ -97,12 +119,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       sidebar.update();
     },
     onDisconnectRequested: async () => {
-      const snapshot = session.current;
-      if (snapshot.serial) {
-        const currentAdb = await getAdb();
-        await currentAdb.disconnect(snapshot.serial);
-      }
-      session.setDisconnected('Android device disconnected.');
+      await disconnectActiveDevice('Android device disconnected.');
       panel.update();
       sidebar.update();
       sidebar.setInteractionHealth('idle');
@@ -143,12 +160,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await openViewer();
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.disconnectDevice', async () => {
-      const snapshot = session.current;
-      if (snapshot.serial) {
-        const currentAdb = await getAdb();
-        await currentAdb.disconnect(snapshot.serial);
-      }
-      session.setDisconnected('Android device disconnected.');
+      await disconnectActiveDevice('Android device disconnected.');
       panel.update();
       sidebar.setInteractionHealth('idle');
     }),

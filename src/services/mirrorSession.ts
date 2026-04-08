@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import type { ViewerPanel } from '../ui/viewerPanel';
+import type { ViewerInputMessage } from '../ui/viewerPanel';
 import type { DeviceSessionSnapshot } from '../types';
 import type { ScrcpyBridge } from './scrcpyBridge';
 import { ScrcpyLaunchError } from './scrcpyBridge';
+import { AdbBridge } from './adbBridge';
 
 /**
  * Manages the lifecycle of a single active mirror session.
@@ -23,6 +25,11 @@ export class MirrorSession implements vscode.Disposable {
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly maxStartAttempts = 2;
   private readonly transientRetryDelayMs = 600;
+  private adb: AdbBridge | undefined;
+  private displaySizeCache:
+    | { serial: string; width: number; height: number; capturedAt: number }
+    | undefined;
+  private readonly displaySizeCacheTtlMs = 10000;
 
   constructor(
     private readonly bridgeFactory: () => ScrcpyBridge,
@@ -37,6 +44,7 @@ export class MirrorSession implements vscode.Disposable {
    */
   public attachViewer(panel: ViewerPanel): void {
     this.panel = panel;
+    panel.onInput((input) => this.handleViewerInput(input));
   }
 
   /**
@@ -105,11 +113,13 @@ export class MirrorSession implements vscode.Disposable {
 
   private async stopInternal(detachViewer = true): Promise<void> {
     if (this.bridge) {
+      await this.bridge.stop(false);
       this.bridge.dispose();
       this.bridge = undefined;
     }
 
     this.currentSerial = undefined;
+    this.displaySizeCache = undefined;
     
     // Clear disposables
     while (this.disposables.length > 0) {
@@ -188,6 +198,7 @@ export class MirrorSession implements vscode.Disposable {
   private clearBridgeState(): void {
     this.bridge = undefined;
     this.currentSerial = undefined;
+    this.displaySizeCache = undefined;
     while (this.disposables.length > 0) {
       this.disposables.pop()?.dispose();
     }
@@ -253,6 +264,34 @@ export class MirrorSession implements vscode.Disposable {
 
   public dispose(): void {
     void this.stop();
+  }
+
+  public async handleViewerInput(input: ViewerInputMessage): Promise<void> {
+    const serial = this.currentSerial;
+    if (!serial || !this.bridge) {
+      return;
+    }
+
+    if (input.type === 'tap') {
+      const { width, height } = await this.getDisplaySize(serial);
+      const x = Math.max(0, Math.min(width - 1, Math.round(width * input.xRatio)));
+      const y = Math.max(0, Math.min(height - 1, Math.round(height * input.yRatio)));
+      const adb = this.getAdb();
+      await adb.inputTap(serial, x, y);
+      return;
+    }
+
+    const adb = this.getAdb();
+    const keyCode = this.mapKeyToAndroidCode(input.key, input.code);
+    if (keyCode !== undefined) {
+      await adb.inputKeyEvent(serial, keyCode);
+      return;
+    }
+
+    const normalizedText = this.normalizeInputText(input.key);
+    if (normalizedText.length > 0) {
+      await adb.inputText(serial, normalizedText);
+    }
   }
 
   private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
@@ -346,4 +385,86 @@ export class MirrorSession implements vscode.Disposable {
       setTimeout(resolve, ms);
     });
   }
+
+  private getAdb(): AdbBridge {
+    if (!this.adb) {
+      const adbPath = vscode.workspace
+        .getConfiguration('androidWirelessDebugging')
+        .get<string>('adbPath') ?? 'adb';
+      this.adb = new AdbBridge(adbPath);
+    }
+    return this.adb;
+  }
+
+  private async getDisplaySize(serial: string): Promise<{ width: number; height: number }> {
+    if (
+      this.displaySizeCache
+      && this.displaySizeCache.serial === serial
+      && Date.now() - this.displaySizeCache.capturedAt < this.displaySizeCacheTtlMs
+    ) {
+      return {
+        width: this.displaySizeCache.width,
+        height: this.displaySizeCache.height,
+      };
+    }
+
+    const size = await this.getAdb().getDisplaySize(serial);
+    this.displaySizeCache = {
+      serial,
+      width: size.width,
+      height: size.height,
+      capturedAt: Date.now(),
+    };
+    return size;
+  }
+
+  private mapKeyToAndroidCode(key: string, code?: string): number | undefined {
+    const byCode = code ? this.keyCodeFromKeyboardCode[code] : undefined;
+    if (typeof byCode === 'number') {
+      return byCode;
+    }
+
+    return this.keyCodeFromKey[key];
+  }
+
+  private normalizeInputText(key: string): string {
+    if (key.length !== 1) {
+      return '';
+    }
+
+    if (key === ' ') {
+      return '%s';
+    }
+
+    if (/^[a-zA-Z0-9]$/.test(key)) {
+      return key;
+    }
+
+    return '';
+  }
+
+  private readonly keyCodeFromKey: Record<string, number> = {
+    Enter: 66,
+    Backspace: 67,
+    Escape: 4,
+    Tab: 61,
+    ArrowUp: 19,
+    ArrowDown: 20,
+    ArrowLeft: 21,
+    ArrowRight: 22,
+    Delete: 112,
+  };
+
+  private readonly keyCodeFromKeyboardCode: Record<string, number> = {
+    Enter: 66,
+    NumpadEnter: 66,
+    Backspace: 67,
+    Escape: 4,
+    Tab: 61,
+    ArrowUp: 19,
+    ArrowDown: 20,
+    ArrowLeft: 21,
+    ArrowRight: 22,
+    Delete: 112,
+  };
 }

@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-08)
 Phase: 2 of 3 (Screen Viewer)
 Plan: 2 of 2 in current phase
 Status: Phase complete — ready for verification
-Last activity: 2026-04-08
+Last activity: 2026-04-08 - Completed quick task 260408-ufl: Fix viewer input handling, reset disconnect behavior, and duplicate scrcpy launches
 
 Progress: [█████████░] 90%
 
@@ -72,6 +72,12 @@ None yet.
 ### Blockers/Concerns
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260408-ufl | Fix viewer input handling, reset disconnect behavior, and duplicate scrcpy launches | 2026-04-08 | (uncommitted) | [260408-ufl-fix-viewer-input-handling-reset-disconne](./quick/260408-ufl-fix-viewer-input-handling-reset-disconne/) |
 
 ## Session Continuity
 

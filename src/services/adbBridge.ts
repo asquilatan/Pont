@@ -98,6 +98,43 @@ export class AdbBridge {
     return Buffer.from(result.stdout as Buffer);
   }
 
+  public async inputTap(serial: string, x: number, y: number): Promise<void> {
+    const { execa } = await import('execa');
+    await execa(this.adbPath, ['-s', serial, 'shell', 'input', 'tap', `${Math.floor(x)}`, `${Math.floor(y)}`], {
+      all: true,
+    });
+  }
+
+  public async inputKeyEvent(serial: string, keyCode: number): Promise<void> {
+    const { execa } = await import('execa');
+    await execa(this.adbPath, ['-s', serial, 'shell', 'input', 'keyevent', `${keyCode}`], {
+      all: true,
+    });
+  }
+
+  public async inputText(serial: string, text: string): Promise<void> {
+    const { execa } = await import('execa');
+    await execa(this.adbPath, ['-s', serial, 'shell', 'input', 'text', text], {
+      all: true,
+    });
+  }
+
+  public async getDisplaySize(serial: string): Promise<{ width: number; height: number }> {
+    const { execa } = await import('execa');
+    const result = await execa(this.adbPath, ['-s', serial, 'shell', 'wm', 'size'], {
+      all: true,
+    });
+    const output = (result.all ?? result.stdout ?? '').toString();
+    const match = output.match(/(?:Physical size|Override size):\s*(\d+)x(\d+)/i);
+    if (!match) {
+      throw new Error('Unable to read Android display size.');
+    }
+    return {
+      width: Number.parseInt(match[1], 10),
+      height: Number.parseInt(match[2], 10),
+    };
+  }
+
   private detectServiceKind(line: string): 'pairing' | 'connect' | 'unknown' {
     const normalized = line.toLowerCase();
     if (normalized.includes('adb-tls-pairing')) {

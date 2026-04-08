@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import type { DeviceSessionSnapshot } from '../types';
 
+export type ViewerInputMessage =
+  | { type: 'tap'; xRatio: number; yRatio: number }
+  | { type: 'key'; key: string; code?: string };
+
 /**
  * Manages the device viewer webview panel lifecycle.
  *
@@ -13,6 +17,7 @@ export class ViewerPanel {
   private panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
   private onDisposeCallback?: () => void;
+  private onInputCallback?: (input: ViewerInputMessage) => Promise<void> | void;
 
   private constructor(
     context: vscode.ExtensionContext,
@@ -103,6 +108,10 @@ export class ViewerPanel {
     this.onDisposeCallback = callback;
   }
 
+  public onInput(callback: (input: ViewerInputMessage) => Promise<void> | void): void {
+    this.onInputCallback = callback;
+  }
+
   /**
    * Maps the device session state to viewer state.
    */
@@ -131,10 +140,31 @@ export class ViewerPanel {
       return;
     }
 
-    const msg = message as { type?: string };
+    const msg = message as { type?: string; xRatio?: number; yRatio?: number; key?: string; code?: string };
 
     switch (msg.type) {
-      // Future: handle viewer-specific messages (e.g., input events)
+      case 'viewer-input-tap':
+        if (
+          typeof msg.xRatio === 'number'
+          && typeof msg.yRatio === 'number'
+          && this.onInputCallback
+        ) {
+          void this.onInputCallback({
+            type: 'tap',
+            xRatio: msg.xRatio,
+            yRatio: msg.yRatio,
+          });
+        }
+        break;
+      case 'viewer-input-key':
+        if (typeof msg.key === 'string' && this.onInputCallback) {
+          void this.onInputCallback({
+            type: 'key',
+            key: msg.key,
+            code: msg.code,
+          });
+        }
+        break;
       default:
         break;
     }
@@ -315,12 +345,15 @@ export class ViewerPanel {
     const vscode = acquireVsCodeApi();
 
     const canvas = document.getElementById('viewer-canvas');
+    const viewerContainer = document.querySelector('.viewer-container');
     const placeholderLoading = document.getElementById('placeholder-loading');
     const placeholderConnected = document.getElementById('placeholder-connected');
     const placeholderDisconnected = document.getElementById('placeholder-disconnected');
     const placeholderError = document.getElementById('placeholder-error');
     const errorMessage = document.getElementById('error-message');
     const viewerMeta = document.getElementById('viewer-meta');
+    /** @type {'loading' | 'connected' | 'disconnected' | 'error'} */
+    let currentViewerState = 'disconnected';
 
     /**
      * Show a specific placeholder state.
@@ -406,6 +439,7 @@ export class ViewerPanel {
      * @param {string} [error]
      */
     function handleStateUpdate(state, error, serial) {
+      currentViewerState = state;
       if (viewerMeta) {
         viewerMeta.textContent = 'Device: ' + (serial || '-');
       }
@@ -427,6 +461,56 @@ export class ViewerPanel {
 
     // Initialize with disconnected state
     showPlaceholder('disconnected');
+
+    function clampRatio(value) {
+      if (!Number.isFinite(value)) {
+        return 0;
+      }
+      if (value < 0) {
+        return 0;
+      }
+      if (value > 1) {
+        return 1;
+      }
+      return value;
+    }
+
+    if (viewerContainer) {
+      viewerContainer.setAttribute('tabindex', '0');
+
+      viewerContainer.addEventListener('pointerdown', (event) => {
+        if (currentViewerState !== 'connected') {
+          return;
+        }
+
+        const rect = viewerContainer.getBoundingClientRect();
+        const xRatio = clampRatio((event.clientX - rect.left) / rect.width);
+        const yRatio = clampRatio((event.clientY - rect.top) / rect.height);
+
+        vscode.postMessage({
+          type: 'viewer-input-tap',
+          xRatio,
+          yRatio,
+        });
+        viewerContainer.focus();
+      });
+
+      viewerContainer.addEventListener('keydown', (event) => {
+        if (currentViewerState !== 'connected') {
+          return;
+        }
+
+        vscode.postMessage({
+          type: 'viewer-input-key',
+          key: event.key,
+          code: event.code,
+        });
+
+        if (event.key.startsWith('Arrow') || event.key === ' ' || event.key === 'Backspace') {
+          event.preventDefault();
+        }
+      });
+    }
   </script>
 </body>
 </html>`;

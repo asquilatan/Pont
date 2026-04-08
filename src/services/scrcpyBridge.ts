@@ -36,6 +36,7 @@ export class ScrcpyBridge implements vscode.Disposable {
   private adb: AdbBridge | undefined;
   private process: any;
   private readonly startupHealthCheckMs = 1200;
+  private readonly stopWaitMs = 900;
 
   public readonly onDidChangeState = this.stateEmitter.event;
   public readonly onDidFrameData = this.frameEmitter.event;
@@ -133,12 +134,32 @@ export class ScrcpyBridge implements vscode.Disposable {
     }
   }
 
-  public stop(emitStopped = true): void {
+  public async stop(emitStopped = true): Promise<void> {
     this.disposed = true;
     this.serial = undefined;
 
     if (this.process) {
-      this.process.kill('SIGTERM');
+      const activeProcess = this.process;
+      let exited = false;
+      const exitPromise = activeProcess
+        .then(() => {
+          exited = true;
+        })
+        .catch(() => {
+          exited = true;
+        });
+      activeProcess.kill('SIGTERM');
+      await Promise.race([
+        exitPromise,
+        this.delay(this.stopWaitMs),
+      ]);
+      if (!exited) {
+        activeProcess.kill('SIGKILL');
+        await Promise.race([
+          exitPromise,
+          this.delay(this.stopWaitMs),
+        ]);
+      }
       this.process = undefined;
     }
 
@@ -258,8 +279,14 @@ export class ScrcpyBridge implements vscode.Disposable {
   }
 
   public dispose(): void {
-    this.stop();
+    void this.stop();
     this.stateEmitter.dispose();
     this.frameEmitter.dispose();
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }

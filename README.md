@@ -2,7 +2,7 @@
 
 <center><img src="media/pont_header.png" alt="Pont Header"/></center>
 
-Pont is a VS Code extension created for Android developers who want to pair a device over wireless debugging and keep key device workflows inside the editor.
+Pont (French for "bridge") connects your Android device to your development environment. It is a VS Code extension created for Android developers who want to pair a device over wireless debugging and keep key device workflows inside the editor.
 
 It pairs your device with `adb`, launches and manages `scrcpy`, and runs Gradle install + app launch from inside VS Code.
 

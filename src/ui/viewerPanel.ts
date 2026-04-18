@@ -25,7 +25,7 @@ export class ViewerPanel {
   ) {
     this.panel = vscode.window.createWebviewPanel(
       'androidWirelessDebugging.viewer',
-      'Pont Viewer',
+      'Android Device Viewer',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -180,7 +180,7 @@ export class ViewerPanel {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-   <title>Pont Viewer</title>
+    <title>Android Device Viewer</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -319,7 +319,7 @@ export class ViewerPanel {
 
     <div id="placeholder-disconnected" class="placeholder">
       <div class="placeholder-icon">📱</div>
-      <h2 class="placeholder-title">Pont Viewer</h2>
+      <h2 class="placeholder-title">Android Device Viewer</h2>
       <p class="placeholder-body">
         No device connected. Pair a device using <strong>Pont: Pair Device</strong> to view its screen here.
       </p>

@@ -19,7 +19,8 @@
     "onCommand:androidWirelessDebugging.openStatusPanel",
     "onCommand:androidWirelessDebugging.openDeviceViewer",
     "onCommand:androidWirelessDebugging.disconnectDevice",
-    "onCommand:androidWirelessDebugging.runConnectedApp",
+    "onCommand:androidWirelessDebugging.installApp",
+    "onCommand:androidWirelessDebugging.launchApp",
     "onCommand:androidWirelessDebugging.resetExtension",
     "onView:androidWirelessDebugging.sidebar"
   ],
@@ -65,8 +66,13 @@
         "category": "Pont"
       },
       {
-        "command": "androidWirelessDebugging.runConnectedApp",
-        "title": "Pont: Run Connected App",
+        "command": "androidWirelessDebugging.installApp",
+        "title": "Pont: Install App",
+        "category": "Pont"
+      },
+      {
+        "command": "androidWirelessDebugging.launchApp",
+        "title": "Pont: Launch App",
         "category": "Pont"
       },
       {
@@ -97,7 +103,7 @@
         "androidWirelessDebugging.gradleInstallTask": {
           "type": "string",
           "default": "installDebug",
-          "description": "Gradle task used by Pont: Run Connected App."
+          "description": "Gradle task used by Pont: Install App."
         },
         "androidWirelessDebugging.scrcpyAlwaysOnTop": {
           "type": "boolean",

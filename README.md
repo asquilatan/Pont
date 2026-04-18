@@ -30,11 +30,18 @@ Pont starts by resolving `adb` and discovering wireless debugging endpoints. Onc
 
 When you open the viewer, Pont resolves `scrcpy`, launches it against the connected serial, and keeps the process under session control. This makes relaunching or disconnecting behave predictably and keeps the UI in sync.
 
-### 3. Run connected app flow
+### 3. Install and launch app flow
 
-When you choose `Pont: Run Connected App`, the extension runs the configured Gradle install task with `ANDROID_SERIAL` set. After install completes, it looks up the package and main activity from the Android manifest and build files, then tries to launch the app. If direct activity launch fails, it falls back to a package-level launcher command.
+Pont now splits app execution into two explicit commands:
 
-The output from this flow is written to the `Pont: Run Connected App` output channel.
+- `Pont: Install App` — runs your configured Gradle install task with `ANDROID_SERIAL` set.
+- `Pont: Launch App` — detects package/activity, checks installed package candidates on-device, and launches with retry + fallback behavior.
+  - If detection fails, Pont prompts for a manual package name and still attempts launch via adb fallback.
+
+Outputs are separated so failures are easier to diagnose:
+
+- `Pont: Install App` output channel
+- `Pont: Launch App` output channel
 
 ## Requirements
 
@@ -43,6 +50,18 @@ The output from this flow is written to the `Pont: Run Connected App` output cha
 - Android device with **Developer options** and **Wireless debugging** enabled
 - `adb` available (Android platform-tools)
 - `scrcpy` installed and on PATH (or configured in settings)
+
+### scrcpy setup
+
+Pont depends on `scrcpy` to mirror/control the connected device.
+
+1. Install `scrcpy`:
+   - **Windows:** `winget install Genymobile.scrcpy` (or `choco install scrcpy`)
+   - **macOS:** `brew install scrcpy`
+   - **Linux:** install via your distro package manager (for example `sudo apt install scrcpy`)
+2. Verify installation:
+   - `scrcpy --version`
+3. Optional (if not on PATH): set `androidWirelessDebugging.scrcpyPath` in VS Code settings.
 
 ## Installation
 
@@ -76,8 +95,9 @@ You can install Pont in two ways:
 2. In VS Code, run `Pont: Pair Device`.
 3. Select discovered host/port (or enter manually) and provide the pairing code.
 4. Run `Pont: Open Device Viewer` to open `scrcpy`.
-5. Run `Pont: Run Connected App` to install and launch your Android app.
-6. If needed, run `Pont: Disconnect Device` or `Pont: Reset Extension`.
+5. Run `Pont: Install App`.
+6. Run `Pont: Launch App`.
+7. If needed, run `Pont: Disconnect Device` or `Pont: Reset Extension`.
 
 ## Configuration
 

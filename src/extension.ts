@@ -8,7 +8,8 @@ import { StatusPanelController } from './ui/statusPanel';
 import { StatusSidebarProvider } from './ui/statusSidebar';
 import { runPairDeviceFlow } from './commands/pairDevice';
 import { openViewerCommand } from './commands/openViewer';
-import { runConnectedAppCommand } from './commands/runConnectedApp';
+import { installConnectedAppCommand } from './commands/installApp';
+import { launchConnectedAppCommand } from './commands/launchApp';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const session = new PairingSession();
@@ -64,6 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   let sidebar: StatusSidebarProvider;
   let openViewerInFlight: Promise<void> | undefined;
+  let installInFlight: Promise<void> | undefined;
 
   const openViewer = async (): Promise<void> => {
     if (openViewerInFlight) {
@@ -89,6 +91,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await openViewerInFlight;
     } finally {
       openViewerInFlight = undefined;
+    }
+  };
+
+  const installApp = async (): Promise<void> => {
+    if (installInFlight) {
+      return installInFlight;
+    }
+    const adbPath = await resolveAdbPath();
+    installInFlight = installConnectedAppCommand({ session, adbPath });
+    try {
+      await installInFlight;
+    } finally {
+      installInFlight = undefined;
     }
   };
 
@@ -124,10 +139,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       sidebar.update();
       sidebar.setInteractionHealth('idle');
     },
-    onRunAppRequested: async () => {
-      const currentAdb = await getAdb();
+    onInstallAppRequested: async () => {
+      await installApp();
+    },
+    onLaunchAppRequested: async () => {
       const adbPath = await resolveAdbPath();
-      await runConnectedAppCommand({ session, adbPath });
+      await launchConnectedAppCommand({ session, adbPath });
     },
     onResetRequested: async () => {
       await resetExtension();
@@ -166,9 +183,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel.update();
       sidebar.setInteractionHealth('idle');
     }),
-    vscode.commands.registerCommand('androidWirelessDebugging.runConnectedApp', async () => {
+    vscode.commands.registerCommand('androidWirelessDebugging.installApp', async () => {
+      await installApp();
+    }),
+    vscode.commands.registerCommand('androidWirelessDebugging.launchApp', async () => {
       const adbPath = await resolveAdbPath();
-      await runConnectedAppCommand({ session, adbPath });
+      await launchConnectedAppCommand({ session, adbPath });
     }),
     vscode.commands.registerCommand('androidWirelessDebugging.resetExtension', async () => {
       await resetExtension();

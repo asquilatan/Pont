@@ -251,11 +251,11 @@ export class MirrorSession implements vscode.Disposable {
   private getDefaultMessage(viewerState: 'loading' | 'connected' | 'disconnected' | 'error'): string {
     switch (viewerState) {
       case 'loading':
-        return 'Preparing in-panel live viewer stream...';
+        return 'Relaunching native scrcpy window...';
       case 'connected':
-        return 'Live viewer stream active in VS Code panel';
+        return 'Native scrcpy control ready';
       case 'error':
-        return 'Failed to start in-panel live viewer stream';
+        return 'Failed to start native scrcpy control';
       case 'disconnected':
       default:
         return 'Screen mirror disconnected';
@@ -365,19 +365,19 @@ export class MirrorSession implements vscode.Disposable {
   private getLoadingMessage(reason: 'start' | 'relaunch' | 'device-change', attempt: number): string {
     if (reason === 'relaunch') {
       return attempt === 1
-        ? 'Refreshing in-panel viewer stream...'
-        : 'Retrying in-panel viewer startup...';
+        ? 'Relaunching native scrcpy window...'
+        : 'Retrying native scrcpy startup...';
     }
 
     if (reason === 'device-change') {
       return attempt === 1
-        ? 'Switching in-panel stream to the active device...'
-        : 'Retrying in-panel viewer startup for the active device...';
+        ? 'Switching native scrcpy to the active device...'
+        : 'Retrying native scrcpy startup for the active device...';
     }
 
     return attempt === 1
-      ? 'Starting in-panel live viewer...'
-      : 'Retrying in-panel viewer startup...';
+      ? 'Starting native scrcpy control...'
+      : 'Retrying native scrcpy startup...';
   }
 
   private async delay(ms: number): Promise<void> {

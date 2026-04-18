@@ -37,8 +37,6 @@ export class ScrcpyBridge implements vscode.Disposable {
   private process: any;
   private readonly startupHealthCheckMs = 1200;
   private readonly stopWaitMs = 900;
-  private frameLoopGeneration = 0;
-  private frameIntervalMs = 300;
 
   public readonly onDidChangeState = this.stateEmitter.event;
   public readonly onDidFrameData = this.frameEmitter.event;
@@ -63,13 +61,12 @@ export class ScrcpyBridge implements vscode.Disposable {
     const scrcpyPath = await resolveScrcpyPath();
     const { execa } = await import('execa');
     const config = vscode.workspace.getConfiguration('androidWirelessDebugging');
-    this.frameIntervalMs = Math.max(150, config.get<number>('frameIntervalMs') ?? 300);
     const windowX = config.get<number>('scrcpyWindowX');
     const windowY = config.get<number>('scrcpyWindowY');
     const windowWidth = config.get<number>('scrcpyWindowWidth');
     const windowHeight = config.get<number>('scrcpyWindowHeight');
     const alwaysOnTop = config.get<boolean>('scrcpyAlwaysOnTop') ?? true;
-    const args = ['-s', activeSerial, '--no-audio', '--no-window'];
+    const args = ['-s', activeSerial, '--no-audio', '--window-title', `Pont Viewer (${activeSerial})`];
     if (alwaysOnTop) {
       args.push('--always-on-top');
     }
@@ -130,9 +127,7 @@ export class ScrcpyBridge implements vscode.Disposable {
       if (startupHealth === 'disposed' || this.disposed) {
         return;
       }
-      await this.captureAndEmitFrame(activeSerial);
       this.emitState({ status: 'running' });
-      this.startFrameLoop(activeSerial);
     } catch (error) {
       startupSettled = true;
       this.process = undefined;
@@ -144,7 +139,6 @@ export class ScrcpyBridge implements vscode.Disposable {
 
   public async stop(emitStopped = true): Promise<void> {
     this.disposed = true;
-    this.frameLoopGeneration += 1;
     this.serial = undefined;
 
     if (this.process) {
@@ -285,59 +279,6 @@ export class ScrcpyBridge implements vscode.Disposable {
 
   private emitState(state: BridgeStateChange): void {
     this.stateEmitter.fire(state);
-  }
-
-  private startFrameLoop(serial: string): void {
-    const generation = this.frameLoopGeneration + 1;
-    this.frameLoopGeneration = generation;
-    void this.runFrameLoop(generation, serial);
-  }
-
-  private async runFrameLoop(generation: number, serial: string): Promise<void> {
-    while (
-      generation === this.frameLoopGeneration
-      && !this.disposed
-      && this.process
-      && this.serial === serial
-    ) {
-      try {
-        await this.captureAndEmitFrame(serial);
-      } catch (error) {
-        const launchError = this.toLaunchError(error);
-        this.emitState({ status: 'error', error: launchError.message });
-        return;
-      }
-      await this.delay(this.frameIntervalMs);
-    }
-  }
-
-  private async captureAndEmitFrame(serial: string): Promise<void> {
-    if (!this.adb) {
-      throw new Error('ADB bridge is not initialized for frame capture.');
-    }
-    const pngBuffer = await this.adb.captureScreenshot(serial);
-    if (!this.looksLikePng(pngBuffer)) {
-      throw new Error('Received malformed frame payload from device screenshot capture.');
-    }
-    this.frameEmitter.fire({
-      dataUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`,
-    });
-  }
-
-  private looksLikePng(buffer: Buffer): boolean {
-    if (buffer.length < 8) {
-      return false;
-    }
-    return (
-      buffer[0] === 0x89
-      && buffer[1] === 0x50
-      && buffer[2] === 0x4E
-      && buffer[3] === 0x47
-      && buffer[4] === 0x0D
-      && buffer[5] === 0x0A
-      && buffer[6] === 0x1A
-      && buffer[7] === 0x0A
-    );
   }
 
   public dispose(): void {

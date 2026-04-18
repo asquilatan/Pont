@@ -159,21 +159,21 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
 
   private getControlGuidance(snapshotState: DeviceSessionSnapshot['state']): string {
     if (snapshotState !== 'connected') {
-        return 'Pair a device, then open Pont Viewer to start in-panel live streaming.';
+        return 'Pair a device, then use Pont Viewer to launch the native scrcpy control window.';
     }
 
     switch (this.interactionHealth.state) {
       case 'relaunching':
-        return 'Refreshing in-panel live viewer stream...';
+        return 'Relaunching native scrcpy window with your configured placement...';
       case 'failed':
         return this.interactionHealth.message
           ? `Control startup failed: ${this.interactionHealth.message}`
-          : 'Viewer startup failed. Use Pont Viewer to retry, or Reset Extension to clear state.';
+          : 'Control startup failed. Use Pont Viewer to retry, or Reset Extension to clear state.';
       case 'ready':
-        return 'In-panel live viewer stream is ready.';
+        return 'Interactive control is ready in native scrcpy (keyboard + mouse/touch).';
       case 'idle':
       default:
-        return 'Pont Viewer runs live rendering directly inside VS Code.';
+        return 'Interaction runs in the native scrcpy window. Pont Viewer relaunches and repositions it using your configured placement.';
     }
   }
 }

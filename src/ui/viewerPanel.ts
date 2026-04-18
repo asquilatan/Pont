@@ -328,8 +328,8 @@ export class ViewerPanel {
 
     <div id="placeholder-connected" class="placeholder hidden">
       <div class="placeholder-icon">🖥️</div>
-      <h2 class="placeholder-title">Mirror running in scrcpy window</h2>
-      <p class="placeholder-body">Real-time mirror is active in a native scrcpy window for better performance.</p>
+      <h2 class="placeholder-title">Live screen streaming in panel</h2>
+      <p class="placeholder-body">Real-time Android frames are being rendered directly inside this VS Code viewer.</p>
       <span class="status-badge tone-success">Connected</span>
     </div>
 

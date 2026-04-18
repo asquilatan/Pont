@@ -6,7 +6,8 @@ interface StatusSidebarCallbacks {
   onPairRequested: () => Promise<void> | void;
   onOpenViewerRequested: () => Promise<void> | void;
   onDisconnectRequested: () => Promise<void> | void;
-  onRunAppRequested: () => Promise<void> | void;
+  onInstallAppRequested: () => Promise<void> | void;
+  onLaunchAppRequested: () => Promise<void> | void;
   onResetRequested: () => Promise<void> | void;
 }
 
@@ -56,8 +57,11 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
           case 'disconnect-request':
             await this.callbacks.onDisconnectRequested();
             break;
-          case 'run-app-request':
-            await this.callbacks.onRunAppRequested();
+          case 'install-app-request':
+            await this.callbacks.onInstallAppRequested();
+            break;
+          case 'launch-app-request':
+            await this.callbacks.onLaunchAppRequested();
             break;
           case 'reset-request':
             await this.callbacks.onResetRequested();
@@ -135,7 +139,8 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
       <button class="primary" id="pair">Pair Device</button>
       <button id="viewer">Open Pont Viewer (Relaunch scrcpy)</button>
       <button id="disconnect" ${disconnectDisabled}>Disconnect</button>
-      <button id="run-app" ${disconnectDisabled}>Run App</button>
+      <button id="install-app" ${disconnectDisabled}>Install App</button>
+      <button id="launch-app" ${disconnectDisabled}>Launch App</button>
       <button id="reset">Reset Extension</button>
     </div>
   </section>
@@ -144,7 +149,8 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
     document.getElementById('pair').addEventListener('click', () => vscode.postMessage({ type: 'pair-request' }));
     document.getElementById('viewer').addEventListener('click', () => vscode.postMessage({ type: 'open-viewer-request' }));
     document.getElementById('disconnect').addEventListener('click', () => vscode.postMessage({ type: 'disconnect-request' }));
-    document.getElementById('run-app').addEventListener('click', () => vscode.postMessage({ type: 'run-app-request' }));
+    document.getElementById('install-app').addEventListener('click', () => vscode.postMessage({ type: 'install-app-request' }));
+    document.getElementById('launch-app').addEventListener('click', () => vscode.postMessage({ type: 'launch-app-request' }));
     document.getElementById('reset').addEventListener('click', () => vscode.postMessage({ type: 'reset-request' }));
   </script>
 </body>
@@ -153,21 +159,21 @@ export class StatusSidebarProvider implements vscode.WebviewViewProvider, vscode
 
   private getControlGuidance(snapshotState: DeviceSessionSnapshot['state']): string {
     if (snapshotState !== 'connected') {
-        return 'Pair a device, then use Pont Viewer to launch the native scrcpy control window.';
+        return 'Pair a device, then open Pont Viewer to start in-panel live streaming.';
     }
 
     switch (this.interactionHealth.state) {
       case 'relaunching':
-        return 'Relaunching native scrcpy window with your configured placement...';
+        return 'Refreshing in-panel live viewer stream...';
       case 'failed':
         return this.interactionHealth.message
           ? `Control startup failed: ${this.interactionHealth.message}`
-          : 'Control startup failed. Use Pont Viewer to retry, or Reset Extension to clear state.';
+          : 'Viewer startup failed. Use Pont Viewer to retry, or Reset Extension to clear state.';
       case 'ready':
-        return 'Interactive control is ready in native scrcpy (keyboard + mouse/touch).';
+        return 'In-panel live viewer stream is ready.';
       case 'idle':
       default:
-        return 'Interaction runs in the native scrcpy window. Pont Viewer relaunches and repositions it using your configured placement.';
+        return 'Pont Viewer runs live rendering directly inside VS Code.';
     }
   }
 }

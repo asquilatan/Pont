@@ -54,7 +54,7 @@ export async function openViewerCommand(deps: OpenViewerDependencies): Promise<O
     const retryAction = 'Retry Open Viewer';
     const resetAction = 'Reset Extension';
     const choice = await vscode.window.showErrorMessage(
-      `Failed to start native control: ${message}`,
+      `Failed to start in-panel viewer stream: ${message}`,
       retryAction,
       resetAction
     );

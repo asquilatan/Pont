@@ -213,9 +213,9 @@ async function pickManualSelection(
     return undefined;
   }
 
-  const portInput = await vscode.window.showInputBox({
-    title: 'Wireless debugging port',
-    prompt: 'Enter the wireless debugging port shown on the device (pair and connect will use this).',
+  const pairingPortInput = await vscode.window.showInputBox({
+    title: 'Pairing port',
+    prompt: 'Enter the pairing port shown in "Pair device with pairing code".',
     placeHolder: '37123',
     ignoreFocusOut: true,
     validateInput: (value) => {
@@ -223,12 +223,26 @@ async function pickManualSelection(
       return Number.isInteger(port) && port > 0 && port <= 65535 ? undefined : 'Enter a valid TCP port number.';
     },
   });
-  if (!portInput?.trim()) {
+  if (!pairingPortInput?.trim()) {
     return undefined;
   }
 
-  const pairPort = Number.parseInt(portInput.trim(), 10);
-  const connectPort = pairPort;
+  const pairPort = Number.parseInt(pairingPortInput.trim(), 10);
+  const connectPortInput = await vscode.window.showInputBox({
+    title: 'Connect port',
+    prompt: 'Enter the connect/debugging port shown on the main Wireless debugging screen.',
+    placeHolder: `${pairPort}`,
+    value: `${pairPort}`,
+    ignoreFocusOut: true,
+    validateInput: (value) => {
+      const port = Number.parseInt(value.trim(), 10);
+      return Number.isInteger(port) && port > 0 && port <= 65535 ? undefined : 'Enter a valid TCP port number.';
+    },
+  });
+  if (!connectPortInput?.trim()) {
+    return undefined;
+  }
+  const connectPort = Number.parseInt(connectPortInput.trim(), 10);
   return {
     pairHost: host.trim(),
     pairPort,
@@ -249,7 +263,7 @@ async function executePairing(
   try {
     await deps.adb.ensureAvailable();
     const beforeDevices = await deps.adb.listDevices();
-    await deps.adb.pair(target);
+    await pairWithFallback(deps.adb, target, connectHost);
     let connectOutput = await deps.adb.connect(connectHost, connectPort);
     let afterDevices = await deps.adb.listDevices();
     let serial = resolveConnectedSerial(connectHost, connectPort, connectOutput, beforeDevices, afterDevices);
@@ -286,6 +300,35 @@ async function executePairing(
     deps.panel.update();
     await vscode.window.showErrorMessage(message);
     return false;
+  }
+}
+
+async function pairWithFallback(adb: AdbBridge, target: PairingTarget, connectHost: string): Promise<void> {
+  try {
+    await adb.pair(target);
+    return;
+  } catch (error) {
+    if (!isAdbPairProtocolFault(error)) {
+      throw error;
+    }
+
+    const endpoints = await adb.discoverWirelessEndpoints();
+    const fallbackPair = endpoints.find(
+      (endpoint) => endpoint.host === connectHost && endpoint.kind === 'pairing' && endpoint.port !== target.port
+    );
+
+    if (fallbackPair) {
+      await adb.pair({
+        ...target,
+        host: fallbackPair.host,
+        port: fallbackPair.port,
+      });
+      return;
+    }
+
+    throw new Error(
+      'adb pair failed with a protocol fault. Confirm you entered the Pairing port (not the Connect port), refresh the pairing code on the device, then retry.'
+    );
   }
 }
 
@@ -348,4 +391,9 @@ function toErrorMessage(error: unknown): string {
     return error.message;
   }
   return 'Pairing failed. Check the device wireless debugging screen and try again.';
+}
+
+function isAdbPairProtocolFault(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /protocol fault|couldn't read status message/i.test(message);
 }
